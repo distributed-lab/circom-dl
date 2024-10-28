@@ -2,6 +2,7 @@ pragma circom 2.1.6;
 
 //move to directory and refactor
 include "../../node_modules/circomlib/circuits/comparators.circom";
+include "../../node_modules/circomlib/circuits/bitify.circom";
 
 //here will be explanation what our big int is and how to use it
 
@@ -58,7 +59,7 @@ template BigMultNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
     
     signal input in[2][CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER * 2 - 1];
-
+    
     
     // We can`t mult multiply 2 big nums without multiplying each chunks of first with each chunk of second
     
@@ -83,7 +84,7 @@ template BigMultNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
     signal tmpResult[CHUNK_NUMBER * 2 - 1][CHUNK_NUMBER];
     
     for (var i = 0; i < CHUNK_NUMBER * 2 - 1; i++){
-
+        
         if (i < CHUNK_NUMBER){
             for (var j = 0; j < i + 1; j++){
                 if (j == 0){
@@ -93,7 +94,7 @@ template BigMultNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
                 }
             }
             out[i] <== tmpResult[i][i];
-            log(out[i]);
+            
         } else {
             for (var j = 0; j < 2 * CHUNK_NUMBER - 1 - i; j++){
                 if (j == 0){
@@ -103,8 +104,54 @@ template BigMultNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
                 }
             }
             out[i] <== tmpResult[i][2 * CHUNK_NUMBER - 2 - i];
-            log(out[i]);
+            
+        }
+    }
+}
 
+template BigMult(CHUNK_SIZE, CHUNK_NUMBER){
+    
+    signal input in[2][CHUNK_NUMBER];
+    signal output out[CHUNK_NUMBER * 2];
+    
+    component bigMultNoCarry = BigMultNoCarry(CHUNK_SIZE, CHUNK_NUMBER);
+    bigMultNoCarry.in <== in;
+    
+    component num2bits[CHUNK_NUMBER * 2 - 1];
+    component bits2numOverflow[CHUNK_NUMBER * 2 - 1];
+    component bits2numModulus[CHUNK_NUMBER * 2 - 1];
+    
+    //overflow = no carry (multiplication result / 2 ** chunk_size) === chunk_size first bits in result
+    for (var i = 0; i < 2 * CHUNK_NUMBER - 1; i++){
+        //bigMultNoCarry = CHUNK_i * CHUNK_j (2 * CHUNK_SIZE) + CHUNK_i0 * CHUNK_j0 (2 * CHUNK_SIZE) + ..., up to len times, => 2 * CHUNK_SIZE + ADDITIONAL_LEN
+        var ADDITIONAL_LEN = i;
+        if (i >= CHUNK_NUMBER){
+            ADDITIONAL_LEN = 2 * CHUNK_NUMBER - 2 - i;
+        }
+
+        num2bits[i] = Num2Bits(CHUNK_SIZE * 2 + ADDITIONAL_LEN);
+
+        if (i == 0 ){
+            num2bits[i].in <== bigMultNoCarry.out[i];
+        } else {
+            num2bits[i].in <== bigMultNoCarry.out[i] + bits2numOverflow[i-1].out;
+        }
+        
+        bits2numOverflow[i] = Bits2Num(CHUNK_SIZE + ADDITIONAL_LEN);
+        for (var j = 0; j < CHUNK_SIZE + ADDITIONAL_LEN; j++){
+            bits2numOverflow[i].in[j] <== num2bits[i].out[CHUNK_SIZE + j];
+        }
+        
+        bits2numModulus[i] = Bits2Num(CHUNK_SIZE);
+        for (var j = 0; j < CHUNK_SIZE; j++){
+            bits2numModulus[i].in[j] <== num2bits[i].out[j];
+        }
+    }
+    for (var i = 0; i < 2 * CHUNK_NUMBER; i++){
+        if (i == 2 * CHUNK_NUMBER - 1){
+            out[i] <== bits2numOverflow[i-1].out;
+        } else {
+            out[i] <== bits2numModulus[i].out;
         }
     }
 }
