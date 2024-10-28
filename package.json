@@ -1,0 +1,17 @@
+{
+  "name": "circom-dl",
+  "version": "1.0.0",
+  "description": "Circom lib for any hard life case.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "test"
+  },
+  "keywords": [
+    "Circom"
+  ],
+  "author": "Distributed lab",
+  "license": "MIT"
+}
