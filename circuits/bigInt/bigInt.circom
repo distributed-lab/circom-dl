@@ -3,6 +3,7 @@ pragma circom 2.1.6;
 //move to directory and refactor
 include "../../node_modules/circomlib/circuits/comparators.circom";
 include "../../node_modules/circomlib/circuits/bitify.circom";
+include "./bigIntFunc.circom";
 
 //here will be explanation what our big int is and how to use it
 
@@ -123,7 +124,8 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER){
     
     //overflow = no carry (multiplication result / 2 ** chunk_size) === chunk_size first bits in result
     for (var i = 0; i < 2 * CHUNK_NUMBER - 1; i++){
-        //bigMultNoCarry = CHUNK_i * CHUNK_j (2 * CHUNK_SIZE) + CHUNK_i0 * CHUNK_j0 (2 * CHUNK_SIZE) + ..., up to len times, => 2 * CHUNK_SIZE + ADDITIONAL_LEN
+        //bigMultNoCarry = CHUNK_i * CHUNK_j (2 * CHUNK_SIZE) + CHUNK_i0 * CHUNK_j0 (2 * CHUNK_SIZE) + ..., up to len times,
+        // => 2 * CHUNK_SIZE + ADDITIONAL_LEN
         var ADDITIONAL_LEN = i;
         if (i >= CHUNK_NUMBER){
             ADDITIONAL_LEN = 2 * CHUNK_NUMBER - 2 - i;
@@ -155,7 +157,96 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER){
         }
     }
 }
+template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in[3][CHUNK_NUMBER]; // num 1, num 2, modulus;
+    signal output out[CHUNK_NUMBER];
 
+    component bigMult = BigMult(CHUNK_SIZE, CHUNK_NUMBER);
+    bigMult.in[0] <== in[0];
+    bigMult.in[1] <== in[1];
+
+    component bigMod = BigMod(CHUNK_SIZE, CHUNK_NUMBER);
+    bigMod.base <== bigMult.out;
+    bigMod.modulus <== in[2];
+
+    out <== bigMod.mod;
+
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        log(out[i]);
+    }
+
+}
+//don`t use it outside the the BigModMult without knowing what are u doing!!!
+template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
+    
+    assert(CHUNK_SIZE <= 126);
+    
+    signal input base[CHUNK_NUMBER * 2];
+    signal input modulus[CHUNK_NUMBER];
+    
+    var long_division[2][100] = long_div(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, base, modulus);
+    
+    signal output div[CHUNK_NUMBER];
+    signal output mod[CHUNK_NUMBER];
+    
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        div[i] <-- long_division[0][i];
+        mod[i] <-- long_division[1][i];
+    }
+    
+    component multChecks[2];
+    multChecks[0] = BigMult(CHUNK_SIZE, CHUNK_NUMBER);
+    multChecks[1] = BigMult(CHUNK_SIZE, CHUNK_NUMBER);
+    
+    multChecks[0].in[0] <== div;
+    multChecks[0].in[1] <== modulus;
+    
+    for (var i = 0; i < CHUNK_NUMBER - 1; i++){
+        multChecks[1].in[0][i] <== div[i];
+    }
+    multChecks[1].in[0][CHUNK_NUMBER - 1] <== div[CHUNK_NUMBER - 1] + 1;
+    multChecks[1].in[1] <== modulus;
+    
+    // div * modulus <= base
+    // (div + 1) * modulus > base
+    component lessEqThan = BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER * 2);
+    component BigGreaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER * 2);
+    
+    lessEqThan.in[0] <== multChecks[0].out;
+    lessEqThan.in[1] <== base;
+    
+    lessEqThan.out === 1;
+
+    BigGreaterThan.in[0] <== multChecks[1].out;
+    BigGreaterThan.in[1] <== base;
+    BigGreaterThan.out === 1;
+    
+    //div * modulus + mod === base
+    
+    component bigAddCheck = BigAdd(CHUNK_SIZE, CHUNK_NUMBER * 2);
+    
+    bigAddCheck.in[0] <== multChecks[0].out;
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        bigAddCheck.in[1][i] <== mod[i];
+    }
+    for (var i = CHUNK_NUMBER; i < 2 * CHUNK_NUMBER; i++){
+        bigAddCheck.in[1][i] <== 0;
+    }
+    
+    component bigIsEqual = BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER * 2 + 1);
+    
+    bigIsEqual.in[0] <== bigAddCheck.out;
+    for (var i = 0; i < CHUNK_NUMBER * 2; i++){
+        bigIsEqual.in[1][i] <== base[i];
+    }
+    bigIsEqual.in[1][CHUNK_NUMBER * 2] <== 0;
+    
+    bigIsEqual.out === 1;
+}
+
+
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------
 //comparators for big numbers
 
 template BigLessThan(CHUNK_SIZE, CHUNK_NUMBER){
@@ -165,32 +256,32 @@ template BigLessThan(CHUNK_SIZE, CHUNK_NUMBER){
     
     component lessThan[CHUNK_NUMBER];
     component isEqual[CHUNK_NUMBER - 1];
-    signal result[CHUNK_NUMBER-1];
+    signal result[CHUNK_NUMBER - 1];
     for (var i = 0; i < CHUNK_NUMBER; i++){
-        lessThan[i] = LessThan(CHUNK_SIZE);   
+        lessThan[i] = LessThan(CHUNK_SIZE);
         lessThan[i].in[0] <== in[0][i];
         lessThan[i].in[1] <== in[1][i];
         
-        if (i != CHUNK_NUMBER - 1){
-            isEqual[i] = IsEqual();
-            isEqual[i].in[0] <== in[0][i];
-            isEqual[i].in[1] <== in[1][i];
+        if (i != 0){
+            isEqual[i-1] = IsEqual();
+            isEqual[i-1].in[0] <== in[0][i];
+            isEqual[i-1].in[1] <== in[1][i];
         }
     }
-
-    for (var i = CHUNK_NUMBER - 2; i >= 0; i--){
-        if (i == CHUNK_NUMBER - 2){
-            result[i] <== lessThan[i].out + isEqual[i].out * lessThan[i+1].out;
+    
+    for (var i = 1; i < CHUNK_NUMBER; i++){
+        if (i == 1){
+            result[i - 1] <== lessThan[i-1].out + isEqual[i-1].out * lessThan[i - 1].out;
         } else {
-            result[i] <== lessThan[i].out + isEqual[i].out * result[i+1];
+            result[i - 1] <== lessThan[i-1].out + isEqual[i-1].out * result[i - 2];
         }
     }
-
-    out <== result[0];
+    
+    out <== result[CHUNK_NUMBER - 2];
 }
 
 template BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER){
-     signal input in[2][CHUNK_NUMBER];
+    signal input in[2][CHUNK_NUMBER];
     
     signal output out;
     
@@ -198,7 +289,7 @@ template BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER){
     component isEqual[CHUNK_NUMBER];
     signal result[CHUNK_NUMBER];
     for (var i = 0; i < CHUNK_NUMBER; i++){
-        lessThan[i] = LessThan(CHUNK_SIZE);   
+        lessThan[i] = LessThan(CHUNK_SIZE);
         lessThan[i].in[0] <== in[0][i];
         lessThan[i].in[1] <== in[1][i];
         
@@ -206,24 +297,24 @@ template BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER){
         isEqual[i].in[0] <== in[0][i];
         isEqual[i].in[1] <== in[1][i];
     }
-
-    for (var i = CHUNK_NUMBER - 1; i >= 0; i--){
-        if (i == CHUNK_NUMBER - 1){
+    
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        if (i == 0){
             result[i] <== lessThan[i].out + isEqual[i].out;
         } else {
-            result[i] <== lessThan[i].out + isEqual[i].out * result[i+1];
+            result[i] <== lessThan[i].out + isEqual[i].out * result[i - 1];
         }
     }
-
-    out <== result[0];
+    
+    out <== result[CHUNK_NUMBER - 1];
     
 }
 
 template BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[2][CHUNK_NUMBER];
-
+    
     signal output out;
-
+    
     component lessEqThan = BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER);
     lessEqThan.in <== in;
     out <== 1 - lessEqThan.out;
@@ -233,7 +324,7 @@ template BigGreaterEqThan(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[2][CHUNK_NUMBER];
     
     signal output out;
-
+    
     component lessThan = BigLessThan(CHUNK_SIZE, CHUNK_NUMBER);
     lessThan.in <== in;
     out <== 1 - lessThan.out;
@@ -260,3 +351,4 @@ template BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER) {
     }
     out <== equalResults[CHUNK_NUMBER - 1];
 }
+

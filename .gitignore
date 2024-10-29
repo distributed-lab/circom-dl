@@ -6,3 +6,4 @@ m.circom
 *.dev.*
 dev
 dev.*
+tools
