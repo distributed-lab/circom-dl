@@ -35,7 +35,7 @@ async function testMultiplying(input1, input2, circuit){
 
 }
 
-describe("Big add test", function () {
+describe("Big mult test", function () {
 
     this.timeout(100000);
     let circuit;

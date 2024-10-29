@@ -79,7 +79,7 @@ template BigMultNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
     // result[idx].lenght = count(i+j === idx)
     // result[0].lenght = 1 (i = 0; j = 0)
     // result[1].lenght = 2 (i = 1; j = 0; i = 0; j = 1);
-    // result[i] = result[i-1] + 1 if i <= CHUNK_NUMBER else result[i-1] - 1 (middle, main diagonal)
+    // result[i].lenght = result[i-1].lenght + 1 if i <= CHUNK_NUMBER else result[i-1].lenght - 1 (middle, main diagonal)
     
     signal tmpResult[CHUNK_NUMBER * 2 - 1][CHUNK_NUMBER];
     
@@ -128,13 +128,13 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER){
         if (i >= CHUNK_NUMBER){
             ADDITIONAL_LEN = 2 * CHUNK_NUMBER - 2 - i;
         }
-
+        
         num2bits[i] = Num2Bits(CHUNK_SIZE * 2 + ADDITIONAL_LEN);
-
-        if (i == 0 ){
+        
+        if (i == 0){
             num2bits[i].in <== bigMultNoCarry.out[i];
         } else {
-            num2bits[i].in <== bigMultNoCarry.out[i] + bits2numOverflow[i-1].out;
+            num2bits[i].in <== bigMultNoCarry.out[i] + bits2numOverflow[i - 1].out;
         }
         
         bits2numOverflow[i] = Bits2Num(CHUNK_SIZE + ADDITIONAL_LEN);
@@ -149,9 +149,49 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER){
     }
     for (var i = 0; i < 2 * CHUNK_NUMBER; i++){
         if (i == 2 * CHUNK_NUMBER - 1){
-            out[i] <== bits2numOverflow[i-1].out;
+            out[i] <== bits2numOverflow[i - 1].out;
         } else {
             out[i] <== bits2numModulus[i].out;
         }
     }
+}
+
+//comparators for big numbers
+
+template BigLessThan(){
+    
+}
+
+template BigLessEqThan(){
+    
+}
+
+template BigGreaterThan(){
+    
+}
+
+template BigGreaterEqThan(){
+    
+}
+
+//it is possible to save some constraints by log_2(n) operations, not n 
+template BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER) {
+    signal input in[2][CHUNK_NUMBER];
+    
+    signal output out;
+    
+    component isEqual[CHUNK_NUMBER];
+    signal equalResults[CHUNK_NUMBER];
+    
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        isEqual[i] = IsEqual();
+        isEqual[i].in[0] <== in[0][i];
+        isEqual[i].in[1] <== in[1][i];
+        if (i == 0){
+            equalResults[i] <== isEqual[i].out;
+        } else {
+            equalResults[i] <== equalResults[i - 1] * isEqual[i].out;
+        }
+    }
+    out <== equalResults[CHUNK_NUMBER - 1];
 }
