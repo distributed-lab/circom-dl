@@ -210,16 +210,16 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     // div * modulus <= base
     // (div + 1) * modulus > base
     component lessEqThan = BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER * 2);
-    component BigGreaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER * 2);
+    component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER * 2);
     
     lessEqThan.in[0] <== multChecks[0].out;
     lessEqThan.in[1] <== base;
     
     lessEqThan.out === 1;
 
-    BigGreaterThan.in[0] <== multChecks[1].out;
-    BigGreaterThan.in[1] <== base;
-    BigGreaterThan.out === 1;
+    greaterThan.in[0] <== multChecks[1].out;
+    greaterThan.in[1] <== base;
+    greaterThan.out === 1;
     
     //div * modulus + mod === base
     
