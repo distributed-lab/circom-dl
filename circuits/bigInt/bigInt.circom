@@ -158,20 +158,85 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER){
 
 //comparators for big numbers
 
-template BigLessThan(){
+template BigLessThan(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in[2][CHUNK_NUMBER];
+    
+    signal output out;
+    
+    component lessThan[CHUNK_NUMBER];
+    component isEqual[CHUNK_NUMBER - 1];
+    signal result[CHUNK_NUMBER-1];
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        lessThan[i] = LessThan(CHUNK_SIZE);   
+        lessThan[i].in[0] <== in[0][i];
+        lessThan[i].in[1] <== in[1][i];
+        
+        if (i != CHUNK_NUMBER - 1){
+            isEqual[i] = IsEqual();
+            isEqual[i].in[0] <== in[0][i];
+            isEqual[i].in[1] <== in[1][i];
+        }
+    }
+
+    for (var i = CHUNK_NUMBER - 2; i >= 0; i--){
+        if (i == CHUNK_NUMBER - 2){
+            result[i] <== lessThan[i].out + isEqual[i].out * lessThan[i+1].out;
+        } else {
+            result[i] <== lessThan[i].out + isEqual[i].out * result[i+1];
+        }
+    }
+
+    out <== result[0];
+}
+
+template BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER){
+     signal input in[2][CHUNK_NUMBER];
+    
+    signal output out;
+    
+    component lessThan[CHUNK_NUMBER];
+    component isEqual[CHUNK_NUMBER];
+    signal result[CHUNK_NUMBER];
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        lessThan[i] = LessThan(CHUNK_SIZE);   
+        lessThan[i].in[0] <== in[0][i];
+        lessThan[i].in[1] <== in[1][i];
+        
+        isEqual[i] = IsEqual();
+        isEqual[i].in[0] <== in[0][i];
+        isEqual[i].in[1] <== in[1][i];
+    }
+
+    for (var i = CHUNK_NUMBER - 1; i >= 0; i--){
+        if (i == CHUNK_NUMBER - 1){
+            result[i] <== lessThan[i].out + isEqual[i].out;
+        } else {
+            result[i] <== lessThan[i].out + isEqual[i].out * result[i+1];
+        }
+    }
+
+    out <== result[0];
     
 }
 
-template BigLessEqThan(){
-    
+template BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in[2][CHUNK_NUMBER];
+
+    signal output out;
+
+    component lessEqThan = BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER);
+    lessEqThan.in <== in;
+    out <== 1 - lessEqThan.out;
 }
 
-template BigGreaterThan(){
+template BigGreaterEqThan(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in[2][CHUNK_NUMBER];
     
-}
+    signal output out;
 
-template BigGreaterEqThan(){
-    
+    component lessThan = BigLessThan(CHUNK_SIZE, CHUNK_NUMBER);
+    lessThan.in <== in;
+    out <== 1 - lessThan.out;
 }
 
 //it is possible to save some constraints by log_2(n) operations, not n 
