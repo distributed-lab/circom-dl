@@ -77,10 +77,10 @@ template BigMultNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
     //  ⋮   ⋮    \   ⋮
     // n*0 n*1 ... n*n
     //
-    // result[idx].lenght = count(i+j === idx)
-    // result[0].lenght = 1 (i = 0; j = 0)
-    // result[1].lenght = 2 (i = 1; j = 0; i = 0; j = 1);
-    // result[i].lenght = result[i-1].lenght + 1 if i <= CHUNK_NUMBER else result[i-1].lenght - 1 (middle, main diagonal)
+    // result[idx].length = count(i+j === idx)
+    // result[0].length = 1 (i = 0; j = 0)
+    // result[1].length = 2 (i = 1; j = 0; i = 0; j = 1);
+    // result[i].length = result[i-1].length + 1 if i <= CHUNK_NUMBER else result[i-1].length - 1 (middle, main diagonal)
     
     signal tmpResult[CHUNK_NUMBER * 2 - 1][CHUNK_NUMBER];
     
