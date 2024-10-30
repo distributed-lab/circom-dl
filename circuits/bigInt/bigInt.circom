@@ -1,13 +1,15 @@
 pragma circom 2.1.6;
 
 //move to directory and refactor
+//change templates naming
 include "../../node_modules/circomlib/circuits/comparators.circom";
 include "../../node_modules/circomlib/circuits/bitify.circom";
 include "./bigIntFunc.circom";
 
 //here will be explanation what our big int is and how to use it
 
-//here will be explanation what is happening here
+//-------------------------------------------------------------------------------------------------------------------------------------------------
+//Next templates are actual only for same chunk sizes of inputs, don`t use them without knowing what are u doing!!!
 
 template BigAddNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
     assert(CHUNK_SIZE <= 253);
@@ -157,25 +159,27 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER){
         }
     }
 }
-template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
-    signal input in[3][CHUNK_NUMBER]; // num 1, num 2, modulus;
-    signal output out[CHUNK_NUMBER];
 
+template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in[3][CHUNK_NUMBER]; 
+    signal output out[CHUNK_NUMBER];
+    
     component bigMult = BigMult(CHUNK_SIZE, CHUNK_NUMBER);
     bigMult.in[0] <== in[0];
     bigMult.in[1] <== in[1];
-
+    
     component bigMod = BigMod(CHUNK_SIZE, CHUNK_NUMBER);
     bigMod.base <== bigMult.out;
     bigMod.modulus <== in[2];
-
+    
     out <== bigMod.mod;
-
+    
     for (var i = 0; i < CHUNK_NUMBER; i++){
         log(out[i]);
     }
-
+    
 }
+
 //don`t use it outside the the BigModMult without knowing what are u doing!!!
 template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     
@@ -216,7 +220,7 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     lessEqThan.in[1] <== base;
     
     lessEqThan.out === 1;
-
+    
     greaterThan.in[0] <== multChecks[1].out;
     greaterThan.in[1] <== base;
     greaterThan.out === 1;
@@ -243,7 +247,192 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     
     bigIsEqual.out === 1;
 }
+//------------------------------------------------------------------------------------------------------------------------------------------------- 
+// Next templates are for big numbers operations for any number of chunks in inputs
 
+// Addition for non-equal chunks
+
+template BigAddNoCarryNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
+    
+    assert(CHUNK_NUMBER_GREATER >= CHUNK_NUMBER_LESS);
+    assert(CHUNK_NUMBER_GREATER <= 253);
+    assert(CHUNK_NUMBER_LESS <= 253);
+    
+    signal input in1[CHUNK_NUMBER_GREATER];
+    signal input in2[CHUNK_NUMBER_LESS];
+    
+    signal output out[CHUNK_NUMBER_GREATER];
+    
+    for (var i = 0; i < CHUNK_NUMBER_LESS; i++){
+        out[i] <== in1[i] + in2[i];
+    }
+    for (var i = CHUNK_NUMBER_LESS; i < CHUNK_NUMBER_GREATER; i++){
+        out[i] <== in1[i];
+    }
+}
+
+template BigAddNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
+    
+    signal input in1[CHUNK_NUMBER_GREATER];
+    signal input in2[CHUNK_NUMBER_LESS];
+    
+    signal output out[CHUNK_NUMBER_GREATER + 1];
+    
+    component bigAddNoCarry = BigAddNoCarryNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
+    bigAddNoCarry.in1 <== in1;
+    bigAddNoCarry.in2 <== in2;
+    
+    component greaterThan[CHUNK_NUMBER_GREATER];
+    
+    for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
+        greaterThan[i] = GreaterEqThan(CHUNK_SIZE + 1);
+        
+        //if >= 2**CHUNK_SIZE, overflow
+        if (i == 0){
+            greaterThan[i].in[0] <== bigAddNoCarry.out[i];
+            greaterThan[i].in[1] <== 2 ** CHUNK_SIZE;
+        } else {
+            greaterThan[i].in[0] <== bigAddNoCarry.out[i] + greaterThan[i - 1].out;
+            greaterThan[i].in[1] <== 2 ** CHUNK_SIZE;
+        }
+    }
+    
+    for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
+        if (i == 0){
+            out[i] <== bigAddNoCarry.out[i] - (greaterThan[i].out) * (2 ** CHUNK_SIZE);
+        }
+        else {
+            out[i] <== bigAddNoCarry.out[i] - (greaterThan[i].out) * (2 ** CHUNK_SIZE) + greaterThan[i - 1].out;
+        }
+    }
+    out[CHUNK_NUMBER_GREATER] <== greaterThan[CHUNK_NUMBER_GREATER - 1].out;
+}
+
+// Multiplication for non-equal chunk numbers
+
+template BigMultNoCarryNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
+    
+    assert(CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS <= 252);
+    assert(CHUNK_NUMBER_GREATER >= CHUNK_NUMBER_LESS);
+
+    signal input in1[CHUNK_NUMBER_GREATER];
+    signal input in2[CHUNK_NUMBER_LESS];
+    signal output out[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
+    
+    
+    // We can`t mult multiply 2 big nums without multiplying each chunks of first with each chunk of second
+    
+    signal tmpMults[CHUNK_NUMBER_GREATER][CHUNK_NUMBER_LESS];
+    for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
+        for (var j = 0; j < CHUNK_NUMBER_LESS; j++){
+            tmpMults[i][j] <== in1[i] * in2[j];
+        }
+    }
+    
+    // left - in1[idx], right - in2[idx]  || n - CHUNK_NUMBER_GREATER, m - CHUNK_NUMBER_LESS
+    // 0*0 0*1 ... 0*n
+    // 1*0 1*1 ... 1*n
+    //  ⋮   ⋮    \   ⋮
+    // m*0 m*1 ... m*n
+    //
+    // result[idx].length = count(i+j === idx)
+    // result[0].length = 1 (i = 0; j = 0)
+    // result[1].length = 2 (i = 1; j = 0; i = 0; j = 1);
+    // result[i].length = { result[i-1].length + 1,  i <= CHUNK_NUMBER_LESS}
+    //                    {  result[i-1].length - 1,  i > CHUNK_NUMBER_GREATER}
+    //                    {  result[i-1].length,      CHUNK_NUMBER_LESS < i <= CHUNK_NUMBER_GREATER}
+    
+    signal tmpResult[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1][CHUNK_NUMBER_LESS];
+    
+    for (var i = 0; i < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1; i++){
+        
+        if (i < CHUNK_NUMBER_LESS){
+            for (var j = 0; j < i + 1; j++){
+                if (j == 0){
+                    tmpResult[i][j] <== tmpMults[i - j][j];
+                } else {
+                    tmpResult[i][j] <== tmpMults[i - j][j] + tmpResult[i][j - 1];
+                }
+            }
+            out[i] <== tmpResult[i][i];
+            
+        } else {
+            if (i < CHUNK_NUMBER_GREATER) {
+                for (var j = 0; j < CHUNK_NUMBER_LESS; j++){
+                    if (j == 0){
+                        tmpResult[i][j] <== tmpMults[i - j][j];
+                    } else {
+                        tmpResult[i][j] <== tmpMults[i - j][j] + tmpResult[i][j - 1];
+                    }
+                }
+                out[i] <== tmpResult[i][CHUNK_NUMBER_LESS - 1];
+            } else {
+                for (var j = 0; j < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1 - i; j++){
+                    if (j == 0){
+                        tmpResult[i][j] <== tmpMults[CHUNK_NUMBER_GREATER - 1 - j][i + j - CHUNK_NUMBER_GREATER + 1];
+                    } else {
+                        tmpResult[i][j] <== tmpMults[CHUNK_NUMBER_GREATER - 1 - j][i + j - CHUNK_NUMBER_GREATER + 1] + tmpResult[i][j - 1];
+                    }
+                }
+                out[i] <== tmpResult[i][CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 2 - i];
+            }
+        }
+    }
+}
+
+template BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
+    
+    signal input in1[CHUNK_NUMBER_GREATER];
+    signal input in2[CHUNK_NUMBER_LESS];
+    signal output out[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS];
+    
+    component bigMultNoCarry = BigMultNoCarryNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
+    bigMultNoCarry.in1 <== in1;
+    bigMultNoCarry.in2 <== in2;
+    
+    component num2bits[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS- 1];
+    component bits2numOverflow[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
+    component bits2numModulus[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
+    
+    //overflow = no carry (multiplication result / 2 ** chunk_size) === chunk_size first bits in result
+    for (var i = 0; i < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1; i++){
+        //bigMultNoCarry = CHUNK_i * CHUNK_j (2 * CHUNK_SIZE) + CHUNK_i0 * CHUNK_j0 (2 * CHUNK_SIZE) + ..., up to len times,
+        // => 2 * CHUNK_SIZE + ADDITIONAL_LEN
+        var ADDITIONAL_LEN = i;
+        if (i >= CHUNK_NUMBER_LESS){
+            ADDITIONAL_LEN = CHUNK_NUMBER_LESS - 1;
+        }
+        if (i >= CHUNK_NUMBER_GREATER){
+            ADDITIONAL_LEN = CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1 - i;
+        }
+
+        
+        num2bits[i] = Num2Bits(CHUNK_SIZE * 2 + ADDITIONAL_LEN);
+        
+        if (i == 0){
+            num2bits[i].in <== bigMultNoCarry.out[i];
+        } else {
+            num2bits[i].in <== bigMultNoCarry.out[i] + bits2numOverflow[i - 1].out;
+        }
+        
+        bits2numOverflow[i] = Bits2Num(CHUNK_SIZE + ADDITIONAL_LEN);
+        for (var j = 0; j < CHUNK_SIZE + ADDITIONAL_LEN; j++){
+            bits2numOverflow[i].in[j] <== num2bits[i].out[CHUNK_SIZE + j];
+        }
+        
+        bits2numModulus[i] = Bits2Num(CHUNK_SIZE);
+        for (var j = 0; j < CHUNK_SIZE; j++){
+            bits2numModulus[i].in[j] <== num2bits[i].out[j];
+        }
+    }
+    for (var i = 0; i < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS; i++){
+        if (i == CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1){
+            out[i] <== bits2numOverflow[i - 1].out;
+        } else {
+            out[i] <== bits2numModulus[i].out;
+        }
+    }
+}
 
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------
@@ -263,20 +452,19 @@ template BigLessThan(CHUNK_SIZE, CHUNK_NUMBER){
         lessThan[i].in[1] <== in[1][i];
         
         if (i != 0){
-            isEqual[i-1] = IsEqual();
-            isEqual[i-1].in[0] <== in[0][i];
-            isEqual[i-1].in[1] <== in[1][i];
+            isEqual[i - 1] = IsEqual();
+            isEqual[i - 1].in[0] <== in[0][i];
+            isEqual[i - 1].in[1] <== in[1][i];
         }
     }
     
     for (var i = 1; i < CHUNK_NUMBER; i++){
         if (i == 1){
-            result[i - 1] <== lessThan[i-1].out + isEqual[i-1].out * lessThan[i - 1].out;
+            result[i - 1] <== lessThan[i].out + isEqual[i - 1].out * lessThan[i - 1].out;
         } else {
-            result[i - 1] <== lessThan[i-1].out + isEqual[i-1].out * result[i - 2];
+            result[i - 1] <== lessThan[i].out + isEqual[i - 1].out * result[i - 2];
         }
     }
-    
     out <== result[CHUNK_NUMBER - 2];
 }
 

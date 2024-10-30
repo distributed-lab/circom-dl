@@ -32,7 +32,7 @@ async function testIsEqual(input1, input2, circuit){
     const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w[1];
-    assert(circuit_result == real_result);
+    assert(circuit_result == real_result, `${input1} == ${input2}`);
 }
 
 async function testLessThan(input1, input2, circuit){
@@ -47,7 +47,7 @@ async function testLessThan(input1, input2, circuit){
     const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w[1];
-    assert(circuit_result == real_result);
+    assert(circuit_result == real_result, `${input1} < ${input2}`);
 }
 
 async function testLessEqThan(input1, input2, circuit){
@@ -62,7 +62,7 @@ async function testLessEqThan(input1, input2, circuit){
     const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w[1];
-    assert(circuit_result == real_result);
+    assert(circuit_result == real_result, `${input1} <= ${input2}`);
 }
 
 async function testGreaterThan(input1, input2, circuit){
@@ -77,7 +77,7 @@ async function testGreaterThan(input1, input2, circuit){
     const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w[1];
-    assert(circuit_result == real_result);
+    assert(circuit_result == real_result, `${input1} > ${input2}`);
 }
 
 async function testGreaterEqThan(input1, input2, circuit){
@@ -92,7 +92,7 @@ async function testGreaterEqThan(input1, input2, circuit){
     const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w[1];
-    assert(circuit_result == real_result);
+    assert(circuit_result == real_result, `${input1} >= ${input2}`);
 }
 
 describe("Comparators tests", function () {
