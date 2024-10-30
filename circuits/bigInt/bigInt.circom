@@ -160,27 +160,6 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
-    signal input in[3][CHUNK_NUMBER]; 
-    signal output out[CHUNK_NUMBER];
-    
-    component bigMult = BigMult(CHUNK_SIZE, CHUNK_NUMBER);
-    bigMult.in[0] <== in[0];
-    bigMult.in[1] <== in[1];
-    
-    component bigMod = BigMod(CHUNK_SIZE, CHUNK_NUMBER);
-    bigMod.base <== bigMult.out;
-    bigMod.modulus <== in[2];
-    
-    out <== bigMod.mod;
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++){
-        log(out[i]);
-    }
-    
-}
-
-//don`t use it outside the the BigModMult without knowing what are u doing!!!
 template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     
     assert(CHUNK_SIZE <= 126);
@@ -188,7 +167,7 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     signal input base[CHUNK_NUMBER * 2];
     signal input modulus[CHUNK_NUMBER];
     
-    var long_division[2][100] = long_div(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, base, modulus);
+    var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, base, modulus);
     
     signal output div[CHUNK_NUMBER];
     signal output mod[CHUNK_NUMBER];
@@ -247,6 +226,23 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     
     bigIsEqual.out === 1;
 }
+
+template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in[3][CHUNK_NUMBER];
+    signal output out[CHUNK_NUMBER];
+    
+    component bigMult = BigMult(CHUNK_SIZE, CHUNK_NUMBER);
+    bigMult.in[0] <== in[0];
+    bigMult.in[1] <== in[1];
+    
+    component bigMod = BigMod(CHUNK_SIZE, CHUNK_NUMBER);
+    bigMod.base <== bigMult.out;
+    bigMod.modulus <== in[2];
+    
+    out <== bigMod.mod;
+}
+
+
 //------------------------------------------------------------------------------------------------------------------------------------------------- 
 // Next templates are for big numbers operations for any number of chunks in inputs
 
@@ -314,7 +310,7 @@ template BigMultNoCarryNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_L
     
     assert(CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS <= 252);
     assert(CHUNK_NUMBER_GREATER >= CHUNK_NUMBER_LESS);
-
+    
     signal input in1[CHUNK_NUMBER_GREATER];
     signal input in2[CHUNK_NUMBER_LESS];
     signal output out[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
@@ -390,7 +386,7 @@ template BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     bigMultNoCarry.in1 <== in1;
     bigMultNoCarry.in2 <== in2;
     
-    component num2bits[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS- 1];
+    component num2bits[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
     component bits2numOverflow[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
     component bits2numModulus[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
     
@@ -405,7 +401,7 @@ template BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
         if (i >= CHUNK_NUMBER_GREATER){
             ADDITIONAL_LEN = CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1 - i;
         }
-
+        
         
         num2bits[i] = Num2Bits(CHUNK_SIZE * 2 + ADDITIONAL_LEN);
         
@@ -434,7 +430,107 @@ template BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     }
 }
 
+template BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
+    
+    assert(CHUNK_NUMBER_BASE <= 253);
+    assert(CHUNK_NUMBER_MODULUS <= 253);
+    assert(CHUNK_NUMBER_MODULUS <= CHUNK_NUMBER_BASE);
+    
+    var CHUNK_NUMBER_DIV = CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS;
+    
+    signal input base[CHUNK_NUMBER_BASE];
+    signal input modulus[CHUNK_NUMBER_MODULUS];
+    
+    var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV, base, modulus);
+    
+    signal output div[CHUNK_NUMBER_DIV];
+    signal output mod[CHUNK_NUMBER_MODULUS];
+    
+    for (var i = 0; i < CHUNK_NUMBER_DIV; i++){
+        div[i] <-- long_division[0][i];
+    }
+    
+    for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++){
+        mod[i] <-- long_division[1][i];
+    }
+    
+    component multChecks[2];
+    if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
+        multChecks[0] = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
+        multChecks[1] = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
+        
+        multChecks[0].in1 <== div;
+        multChecks[0].in2 <== modulus;
+        
+        for (var i = 0; i < CHUNK_NUMBER_DIV - 1; i++){
+            multChecks[1].in1[i] <== div[i];
+        }
+        multChecks[1].in1[CHUNK_NUMBER_DIV - 1] <== div[CHUNK_NUMBER_DIV - 1] + 1;
+        multChecks[1].in2 <== modulus;
+    } else {
+        multChecks[0] = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
+        multChecks[1] = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
+        
+        multChecks[0].in2 <== div;
+        multChecks[0].in1 <== modulus;
+        
+        for (var i = 0; i < CHUNK_NUMBER_DIV - 1; i++){
+            multChecks[1].in2[i] <== div[i];
+        }
+        multChecks[1].in2[CHUNK_NUMBER_DIV - 1] <== div[CHUNK_NUMBER_DIV - 1] + 1;
+        multChecks[1].in1 <== modulus;
+    }
+    
+    
+    // div * modulus <= base
+    // (div + 1) * modulus > base
+    component lessEqThan = BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER_BASE);
+    component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER_BASE);
+    
+    lessEqThan.in[0] <== multChecks[0].out;
+    lessEqThan.in[1] <== base;
+    
+    lessEqThan.out === 1;
+    
+    greaterThan.in[0] <== multChecks[1].out;
+    greaterThan.in[1] <== base;
+    greaterThan.out === 1;
+    
+    //div * modulus + mod === base
+    
+    component bigAddCheck = BigAddNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS);
+    
+    bigAddCheck.in1 <== multChecks[0].out;
+    bigAddCheck.in2 <== mod;
+    
+    component bigIsEqual = BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE + 1);
+    
+    bigIsEqual.in[0] <== bigAddCheck.out;
+    for (var i = 0; i < CHUNK_NUMBER_BASE; i++){
+        bigIsEqual.in[1][i] <== base[i];
+    }
+    bigIsEqual.in[1][CHUNK_NUMBER_BASE] <== 0;
+    
+    bigIsEqual.out === 1;
+}
 
+template BigMultModPNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_NUMBER_MODULUS){
+    signal input in1[CHUNK_NUMBER_GREATER];
+    signal input in2[CHUNK_NUMBER_LESS];
+    signal input modulus[CHUNK_NUMBER_MODULUS];
+    
+    signal output out[CHUNK_NUMBER_MODULUS];
+    
+    component bigMult = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
+    bigMult.in1 <== in1;
+    bigMult.in2 <== in2;
+    
+    component bigMod = BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS, CHUNK_NUMBER_MODULUS);
+    bigMod.base <== bigMult.out;
+    bigMod.modulus <== modulus;
+    
+    out <== bigMod.mod;
+}
 //-------------------------------------------------------------------------------------------------------------------------------------------------
 //comparators for big numbers
 
