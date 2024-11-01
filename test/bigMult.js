@@ -56,7 +56,7 @@ describe("Big mult test (Equal)", function () {
     let circuit;
 
     before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigMult.circom"));
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigMult.circom"));
     });
 
     it("15 * 15", async function () {
@@ -79,7 +79,7 @@ describe("Big mult test (NonEqual)", function () {
     let circuit;
 
     before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigMultNonEqual.circom"));
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigMultNonEqual.circom"));
     });
 
     it("24188336883322787099258287497738164256214809127723913841212670628715654596816240547673056925099527765267934881522933 * 15", async function () {

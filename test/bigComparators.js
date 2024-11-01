@@ -105,11 +105,11 @@ describe("Comparators tests", function () {
     let circuitGreaterEqThan;
 
     before(async () => {
-        circuitEqual = await wasm_tester(path.join(__dirname, "circuits", "bigIsEqual.circom"));
-        circuitLessThan = await wasm_tester(path.join(__dirname, "circuits", "bigLessThan.circom"));
-        circuitLessEqThan = await wasm_tester(path.join(__dirname, "circuits", "bigLessEqThan.circom"));
-        circuitGreaterThan = await wasm_tester(path.join(__dirname, "circuits", "bigGreaterThan.circom"));
-        circuitGreaterEqThan = await wasm_tester(path.join(__dirname, "circuits", "bigGreaterEqThan.circom"));
+        circuitEqual = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigIsEqual.circom"));
+        circuitLessThan = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigLessThan.circom"));
+        circuitLessEqThan = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigLessEqThan.circom"));
+        circuitGreaterThan = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigGreaterThan.circom"));
+        circuitGreaterEqThan = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigGreaterEqThan.circom"));
     });
 
     it("15 === 15", async function () {

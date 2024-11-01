@@ -89,7 +89,7 @@ describe("Big mod test", function () {
     let circuit;
 
     before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigMod.circom"));
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigMod.circom"));
     });
 
     it("15 % 26262817184209173020064851983289930415585458833826032068889457685516668396079", async function () {
@@ -112,7 +112,7 @@ describe("Big mod test (Non Equal)", function () {
     let circuit;
 
     before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigModNonEqual.circom"));
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigModNonEqual.circom"));
     });
 
     it("15 % 26262817184209173020064851983289930415585458833826032068889457685516668396079", async function () {
@@ -136,7 +136,7 @@ describe("Big mult mod test", function () {
     let circuit;
 
     before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigMultModP.circom"));
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigMultModP.circom"));
     });
 
     it("15 * 15 % 109730872847609188478309451572148122150330802072000585050763249942403213063436", async function () {
@@ -159,7 +159,7 @@ describe("Big mult mod test (NonEqual)", function () {
     let circuit;
 
     before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigMultModPNonEqual.circom"));
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigMultModPNonEqual.circom"));
     });
 
     it("15 * 15 % 1526894769500295165194414781268732802329236444379571779649775359021011024767794405099017497566861", async function () {

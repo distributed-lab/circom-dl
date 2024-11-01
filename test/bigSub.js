@@ -55,7 +55,7 @@ describe("Big sub test", function () {
     let circuit;
 
     before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigSub.circom"));
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigSub.circom"));
     });
 
     it("15 - 15", async function () {
@@ -81,7 +81,7 @@ describe("Big sub test (Non Equal)", function () {
     let circuit;
 
     before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigSubNonEqual.circom"));
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigSubNonEqual.circom"));
     });
 
     it("15 - 15", async function () {

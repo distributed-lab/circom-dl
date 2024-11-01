@@ -55,7 +55,7 @@ describe("Big add test", function () {
     let circuit;
 
     before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigAdd.circom"));
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigAdd.circom"));
     });
 
     //no overflows
@@ -81,7 +81,7 @@ describe("Big add test (Non Equal)", function () {
     let circuit;
 
     before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigAddNonEqual.circom"));
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "bigInt", "bigAddNonEqual.circom"));
     });
 
     //no overflows

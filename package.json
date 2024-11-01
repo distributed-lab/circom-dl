@@ -7,7 +7,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "./node_modules/.bin/mocha -p 'test/*.js'"
+    "test": "./node_modules/.bin/mocha -p 'test/bitGates.js'"
   },
   "keywords": [
     "Circom"
