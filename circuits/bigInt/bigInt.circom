@@ -253,6 +253,7 @@ template BigSubNoBorrow(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
+//in[0] >= in[1], else will not work correctly, use only in this case!
 template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[2][CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
@@ -562,6 +563,25 @@ template BigMultModPNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS
     
     out <== bigMod.mod;
 }
+
+//in[0] >= in[1], else will not work correctly, use only in this case!
+template BigSubNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
+    signal input in1[CHUNK_NUMBER_GREATER];
+    signal input in2[CHUNK_NUMBER_LESS];
+    signal output out[CHUNK_NUMBER_GREATER];
+
+    component bigSub = BigSub(CHUNK_SIZE, CHUNK_NUMBER_GREATER);
+    bigSub.in[0] <== in1;
+    for (var i = 0; i < CHUNK_NUMBER_LESS; i++){
+        bigSub.in[1][i] <== in2[i];
+    }
+    for (var i = CHUNK_NUMBER_LESS; i < CHUNK_NUMBER_GREATER; i++){
+        bigSub.in[1][i] <== 0;
+    }
+
+    out <== bigSub.out;
+}
+
 //-------------------------------------------------------------------------------------------------------------------------------------------------
 //comparators for big numbers
 
