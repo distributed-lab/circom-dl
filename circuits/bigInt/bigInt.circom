@@ -242,6 +242,37 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
     out <== bigMod.mod;
 }
 
+template BigSubNoBorrow(CHUNK_SIZE, CHUNK_NUMBER){
+    assert (CHUNK_SIZE < 252);
+    
+    signal input in[2][CHUNK_NUMBER];
+    signal output out[CHUNK_NUMBER];
+    
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        out[i] <== in[0][i] - in[1][i];
+    }
+}
+
+template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in[2][CHUNK_NUMBER];
+    signal output out[CHUNK_NUMBER];
+    component bigSubNoBorrow = BigSubNoBorrow(CHUNK_SIZE, CHUNK_NUMBER);
+    bigSubNoBorrow.in <== in;
+    
+    component lessThan[CHUNK_NUMBER];
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        lessThan[i] = LessThan(CHUNK_SIZE + 1);
+        lessThan[i].in[1] <== 2 ** CHUNK_SIZE;
+        
+        if (i == 0){
+            lessThan[i].in[0] <== bigSubNoBorrow.out[i] + 2 ** CHUNK_SIZE;
+            out[i] <== bigSubNoBorrow.out[i] + (2 ** CHUNK_SIZE) * (lessThan[i].out);
+        } else {
+            lessThan[i].in[0] <== bigSubNoBorrow.out[i] - lessThan[i - 1].out + 2 ** CHUNK_SIZE;
+            out[i] <== bigSubNoBorrow.out[i] + (2 ** CHUNK_SIZE) * (lessThan[i].out) - lessThan[i - 1].out;
+        }
+    }
+}
 
 //------------------------------------------------------------------------------------------------------------------------------------------------- 
 // Next templates are for big numbers operations for any number of chunks in inputs
