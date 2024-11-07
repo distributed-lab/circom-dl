@@ -1,7 +1,7 @@
 pragma circom 2.1.6;
 
-include "../../node_modules/circomlib/circuits/comparators.circom";
-include "../../node_modules/circomlib/circuits/bitify.circom";
+include "../bitify/comparators.circom";
+include "../bitify/bitify.circom";
 
 template Inverse(){
     signal input in;

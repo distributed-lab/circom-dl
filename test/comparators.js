@@ -4,22 +4,6 @@ const path = require("path");
 const Scalar = require("ffjavascript").Scalar;
 const wasm_tester = require("circom_tester").wasm;
 
-function bigintToArray(n, k, x) {
-    let mod = BigInt(1);
-    for (let idx = 0; idx < n; idx++) {
-        mod *= BigInt(2);
-    }
-
-    const ret = [];
-    let xTemp = x;
-    for (let idx = 0; idx < k; idx++) {
-        ret.push(xTemp % mod);
-        xTemp /= mod; 
-    }
-
-    return ret;
-}
-
 async function testIsZero(input, circuit){
     let real_result = [0n]
     if (input == 0n){
@@ -60,7 +44,7 @@ async function testIsGreater(input1, input2, circuit){
     let circuit_result = w.slice(1, 1+1);
 
     for (var i = 0; i < 1; i++){
-        assert(circuit_result[i] == real_result[i], `>`)
+        assert(circuit_result[i] == real_result[i], `>`);
     }
 }
 

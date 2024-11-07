@@ -2,8 +2,8 @@ pragma circom 2.1.6;
 
 //move to directory and refactor
 //change templates naming
-include "../../node_modules/circomlib/circuits/comparators.circom";
-include "../../node_modules/circomlib/circuits/bitify.circom";
+include "../bitify/comparators.circom";
+include "../bitify/bitify.circom";
 include "./bigIntFunc.circom";
 
 //here will be explanation what our big int is and how to use it

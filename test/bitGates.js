@@ -102,7 +102,7 @@ async function testNinvImply(input1, input2, circuit){
     let circuit_result = w.slice(1, 1+1);
 
     for (var i = 0; i < 1; i++){
-        assert(circuit_result[i] == real_result[i], `InvImply(${input1} ${input2}): ${circuit_result[i]}, ${real_result[i]}`);
+        assert(circuit_result[i] == real_result[i], `NInvImply(${input1} ${input2}): ${circuit_result[i]}, ${real_result[i]}`);
     }
 }
 
