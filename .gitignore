@@ -2,6 +2,7 @@ node_modules
 package-lock.json
 scripts
 m.circom
+m2.circom
 *.dev
 *.dev.*
 dev
@@ -11,3 +12,4 @@ circuits/hasher/*
 circuits/babyjubjub/*
 test/circuits/babyjubjub/*
 test/montogomery.js
+input*.json

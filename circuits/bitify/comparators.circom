@@ -35,45 +35,45 @@ template ForceEqualIfEnabled() {
     (1 - isEqual.out) * enabled === 0;
 }
 
-template LessThan(n) {
-    assert(n <= 252);
+template LessThan(LEN) {
+    assert(LEN <= 252);
     signal input in[2];
     signal output out;
     
-    component n2b = Num2Bits(n + 1);
+    component n2b = Num2Bits(LEN + 1);
     
-    n2b.in <== in[0] + (1 << n) - in[1];
+    n2b.in <== in[0] + (1 << LEN) - in[1];
     
-    out <== 1 - n2b.out[n];
+    out <== 1 - n2b.out[LEN];
 }
 
-template LessEqThan(n) {
+template LessEqThan(LEN) {
     signal input in[2];
     signal output out;
     
-    component lessThan = LessThan(n);
+    component lessThan = LessThan(LEN);
     
     lessThan.in[0] <== in[0];
     lessThan.in[1] <== in[1] + 1;
     lessThan.out ==> out;
 }
 
-template GreaterThan(n) {
+template GreaterThan(LEN) {
     signal input in[2];
     signal output out;
     
-    component lt = LessThan(n);
+    component lt = LessThan(LEN);
     
     lt.in[0] <== in[1];
     lt.in[1] <== in[0];
     lt.out ==> out;
 }
 
-template GreaterEqThan(n) {
+template GreaterEqThan(LEN) {
     signal input in[2];
     signal output out;
     
-    component lt = LessThan(n);
+    component lt = LessThan(LEN);
     
     lt.in[0] <== in[1];
     lt.in[1] <== in[0] + 1;
