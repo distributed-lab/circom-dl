@@ -6,10 +6,10 @@ include "./bigIntFunc.circom";
 include "../int/arithmetic.circom";
 include "./karatsuba.circom";
 
-//here will be explanation what our big int is and how to use it
+// Here will be explanation what our big int is and how to use it
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------
-//Next templates are actual only for same chunk sizes of inputs, don`t use them without knowing what are u doing!!!
+// Next templates are actual only for same chunk sizes of inputs, don`t use them without knowing what are u doing!!!
 
 template BigAddNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
     assert(CHUNK_SIZE <= 253);
@@ -167,7 +167,7 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-//use only for CHUNK_NUMBER == 2 ** x
+// use only for CHUNK_NUMBER == 2 ** x
 template BigMultOptimised(CHUNK_SIZE, CHUNK_NUMBER){
     
     signal input dummy;
@@ -271,7 +271,7 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     bigIsEqual.out === 1;
 }
 
-//use only for CHUNK_NUMBER == 2 ** x
+// use only for CHUNK_NUMBER == 2 ** x
 template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[3][CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
@@ -302,7 +302,7 @@ template BigSubNoBorrow(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-//in[0] >= in[1], else will not work correctly, use only in this case!
+// in[0] >= in[1], else will not work correctly, use only in this case!
 template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[2][CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
@@ -326,7 +326,7 @@ template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-//USE THIS ONLY FOR EXP IN 10000000...01 FORMAT, EBITS = LEN OF EXP, MIN = 2 (11 in bit = 0x3)
+// USE THIS ONLY FOR EXP IN 10000000...01 FORMAT, EBITS = LEN OF EXP, MIN = 2 (11 in bit = 0x3)
 template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, E_BITS) {
     assert(E_BITS >= 2);
     
@@ -368,6 +368,37 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, E_BITS) {
     }
 }
 
+// use only for CHUNK_NUMBER == 2 ** x
+template BigModInvOptimised(CHUNK_SIZE, CHUNK_NUMBER) {
+    assert(CHUNK_SIZE <= 252);
+    signal input in[CHUNK_NUMBER];
+    signal input modulus[CHUNK_NUMBER];
+    signal output out[CHUNK_NUMBER];
+    
+    signal input dummy;
+    dummy * dummy === 0;
+    
+    var inv[200] = mod_inv(CHUNK_SIZE, CHUNK_NUMBER, in, modulus);
+    for (var i = 0; i < CHUNK_NUMBER; i++) {
+        out[i] <-- inv[i];
+    }
+    // component rangeChecks[CHUNK_NUMBER];
+    // for (var i = 0; i < CHUNK_NUMBER; i++) {
+    //     rangeChecks[i] = Num2Bits(CHUNK_SIZE);
+    //     rangeChecks[i].in <== out[i];
+    // }
+    
+    component mult = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
+    mult.in[0] <== in;
+    mult.in[1] <== out;
+    mult.in[2] <== modulus;
+    mult.dummy <== dummy;
+    
+    mult.out[0] === 1;
+    for (var i = 1; i < CHUNK_NUMBER; i++) {
+        mult.out[i] === 0;
+    }
+}
 
 //------------------------------------------------------------------------------------------------------------------------------------------------- 
 // Next templates are for big numbers operations for any number of chunks in inputs
@@ -781,4 +812,6 @@ template BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER) {
     }
     out <== equalResults[CHUNK_NUMBER - 1];
 }
+
+
 

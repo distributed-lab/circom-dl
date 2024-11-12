@@ -439,3 +439,117 @@ function prod_mod_p(n, k, a, b, p){
     result = long_div(n, k, k, tmp, p);
     return result[1];
 }
+
+// function big_sqrt(CHUNK_SIZE, CHUNK_NUMBER, base, modulus){
+    
+//     var TWO[CHUNK_NUMBER];
+
+//     TWO[0] = 2;
+
+//     for (var i = 1; i < CHUNK_NUMBER; i++){
+//         TWO[i] = 0;
+//     }
+
+//     var s = 0;
+
+//     var q[CHUNK_NUMBER];
+//     for (var i = 0; i < CHUNK_NUMBER - 1; i++){
+//         q[i] = modulus[i];
+//     }
+//     q[CHUNK_NUMBER - 1] = modulus[CHUNK_NUMBER - 1] - 1;
+
+//     var mod_minus_one[CHUNK_NUMBER];
+//     for (var i = 0; i < CHUNK_NUMBER - 1; i++){
+//         mod_minus_one[i] = modulus[i];
+//     }
+//     mod_minus_one[CHUNK_NUMBER - 1] = modulus[CHUNK_NUMBER - 1] - 1;
+    
+//     var half_mod_minus_one[CHUNK_NUMBER];
+//     for (var i = 0; i < CHUNK_NUMBER; i++){
+//         half_mod_minus_one[i] = long_div(CHUNK_SIZE, 1, CHUNK_NUMBER - 1, mod_minus_one, [2])[1][i];
+//     }
+
+//     var ZERO[200];
+//     for (var i = 0; i < 200; i++){
+//         ZERO[i] = 0;
+//     }
+
+//     var ONE[200];
+//     ONE[1] = 1;
+//     for (var i = 1; i < 200; i++){
+//         ONE[i] = 0;
+//     }
+//     while (long_div(CHUNK_SIZE, 1, CHUNK_NUMBER - 1, q, [2])[1] == ZERO) {
+//         s += 1;
+//         for (var i = 0; i < CHUNK_NUMBER; i++){
+//             q[i] = long_div(CHUNK_SIZE, 1, CHUNK_NUMBER - 1, q, [2])[1][i];
+//         }
+//     }
+
+//     var z[CHUNK_NUMBER];
+//     for (var i = 0; i < CHUNK_NUMBER; i++){
+//         z[i] = 0;
+//     }
+//     while (mod_exp(CHUNK_SIZE, CHUNK_NUMBER, z, half_mod_minus_one, modulus) == 1) {
+//         z[0] += 1;
+//     }
+
+//     var q_plus_one[CHUNK_NUMBER];
+
+//     q_plus_one[0] = 1 + q[0];
+//     for (var i = 1; i < CHUNK_NUMBER; i++){
+//         q_plus_one[i] = q[i];
+//     }
+
+//     var half_q_plus_one[CHUNK_NUMBER];
+
+//     for (var i = 0; i < CHUNK_NUMBER; i++){
+//         half_q_plus_one[i] = long_div(CHUNK_SIZE, 1, CHUNK_NUMBER - 1, q_plus_one, [2])[1][i];
+//     }
+
+//     // 3. Initialize variables
+//     var m = s;
+//     var c = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, z, q, modulus);
+//     var t = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, base, q, modulus);
+//     var r = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, base, half_q_plus_one, modulus);
+
+
+//     var ONE_CHUNK_NUMBER[CHUNK_NUMBER];
+//     ONE_CHUNK_NUMBER[0] = 1; 
+//     for (var i = 1; i < CHUNK_NUMBER; i++){
+//         ONE_CHUNK_NUMBER[i] = 0;
+//     }
+//     // 4. Loop until `t == 1`
+//     while (t != ONE_CHUNK_NUMBER) {
+//         // Find the smallest integer `i` such that `t^(2^i) == 1 (mod modulus)`
+//         var i = 1;
+//         var exp[CHUNK_NUMBER];
+//         exp[0] = 2
+//         for (var i = 1; i < CHUNK_NUMBER; i++){
+//             exp[i] = 0;
+//         }
+//         while (mod_exp(CHUNK_SIZE, CHUNK_NUMBER, t, exp, modulus) != 1) {
+//             i += 1;
+//             exp = long_scalar_mult(CHUNK_SIZE, CHUNK_NUMBER, 2, exp);
+//         }
+
+//         var b = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, c, 2**(m - i - 1), modulus);
+        
+//         r = (r * b) % modulus;
+
+//         var temp[200]; 
+//         temp = prod(CHUNK_SIZE, CHUNK_NUMBER, r, b);
+//         var temp2[2][200];
+//         temp2 = long_div(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, temp, p);
+//         out = temp2[1];
+
+//         t = (t * b * b) % modulus;
+//         c = (b * b) % modulus;
+
+//         c = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, b, b, modulus);
+//         m = i;
+//     }
+
+//     // `r` is the square root of `base` modulo `modulus`
+//     return r;
+// }
