@@ -36,7 +36,7 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER){
     component num2bits[CHUNK_NUMBER];
     
     for (var i = 0; i < CHUNK_NUMBER; i++){
-        num2bits[i] = Num2Bits(CHUNK_SIZE + 1);
+        num2bits[i] = Num2Bits(CHUNK_SIZE + 2);
         
         //if >= 2**CHUNK_SIZE, overflow
         if (i == 0){
@@ -706,6 +706,17 @@ template BigSubNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     }
     
     out <== bigSub.out;
+}
+
+template ScalarMultNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in[CHUNK_NUMBER];
+    signal input scalar;
+
+    signal output out[CHUNK_NUMBER];
+
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        out[i] <== scalar * in[i];
+    }
 }
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------
