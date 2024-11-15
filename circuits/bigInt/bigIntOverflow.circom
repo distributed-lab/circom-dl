@@ -12,7 +12,7 @@ include "./karatsuba.circom";
 //-------------------------------------------------------------------------------------------------------------------------------------------------
 // Next templates are actual only for same chunk sizes of inputs, don`t use them without knowing what are u doing!!!
 
-template BigAddOwerflow(CHUNK_SIZE, CHUNK_NUMBER){
+template BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     assert(CHUNK_SIZE <= 253);
     
     signal input in[2][CHUNK_NUMBER];
@@ -24,7 +24,23 @@ template BigAddOwerflow(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-template BigMultOwerflow(CHUNK_SIZE, CHUNK_NUMBER){
+template BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
+    
+    signal input in1[CHUNK_NUMBER_GREATER];
+    signal input in2[CHUNK_NUMBER_LESS];
+    signal output out[CHUNK_NUMBER_GREATER];
+    signal input dummy;
+    
+    for (var i = 0; i < CHUNK_NUMBER_LESS; i++){
+        out[i] <== in1[i] + in2[i] + dummy * dummy;
+    }
+    for (var i = CHUNK_NUMBER_LESS; i < CHUNK_NUMBER_GREATER; i++){
+        out[i] <== in1[i] + dummy * dummy;
+    }
+}
+
+
+template BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     
     assert(CHUNK_SIZE <= 126);
     
@@ -81,7 +97,7 @@ template BigMultOwerflow(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-template BigMultOptimisedOwerflow(CHUNK_SIZE, CHUNK_NUMBER){
+template BigMultOptimisedOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     
     assert(CHUNK_SIZE <= 126);
     
@@ -97,7 +113,7 @@ template BigMultOptimisedOwerflow(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-// template BigModOwerflow(CHUNK_SIZE, CHUNK_NUMBER){
+// template BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     
     //     assert(CHUNK_SIZE <= 126);
     
@@ -111,9 +127,9 @@ template BigMultOptimisedOwerflow(CHUNK_SIZE, CHUNK_NUMBER){
     //     signal output mod[CHUNK_NUMBER];
     
     //     for (var i = 0; i < CHUNK_NUMBER; i++){
-        //         div[i] <-- long_division[0][i];
-        //         mod[i] <-- long_division[1][i];
-        //     }
+    //         div[i] <-- long_division[0][i];
+    //         mod[i] <-- long_division[1][i];
+    //     }
     
     //     component multChecks[2];
     //     multChecks[0] = BigMultOptimised(CHUNK_SIZE, CHUNK_NUMBER);
@@ -124,8 +140,8 @@ template BigMultOptimisedOwerflow(CHUNK_SIZE, CHUNK_NUMBER){
     //     multChecks[0].dummy <== dummy;
     
     //     for (var i = 0; i < CHUNK_NUMBER - 1; i++){
-        //         multChecks[1].in[0][i] <== div[i];
-        //     }
+    //         multChecks[1].in[0][i] <== div[i];
+    //     }
     //     multChecks[1].in[0][CHUNK_NUMBER - 1] <== div[CHUNK_NUMBER - 1] + 1 + dummy * dummy;
     //     multChecks[1].in[1] <== modulus;
     //     multChecks[1].dummy <== dummy;
@@ -149,46 +165,50 @@ template BigMultOptimisedOwerflow(CHUNK_SIZE, CHUNK_NUMBER){
     
     //     bigAddCheck.in[0] <== multChecks[0].out;
     //     for (var i = 0; i < CHUNK_NUMBER; i++){
-        //         bigAddCheck.in[1][i] <== mod[i];
-        //     }
+    //         bigAddCheck.in[1][i] <== mod[i];
+    //     }
     //     for (var i = CHUNK_NUMBER; i < 2 * CHUNK_NUMBER; i++){
-        //         bigAddCheck.in[1][i] <== 0;
-        //     }
+    //         bigAddCheck.in[1][i] <== 0;
+    //     }
     //     bigAddCheck.dummy <== dummy;
     
     //     component bigIsEqual = BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER * 2 + 1);
     
     //     bigIsEqual.in[0] <== bigAddCheck.out;
     //     for (var i = 0; i < CHUNK_NUMBER * 2; i++){
-        //         bigIsEqual.in[1][i] <== base[i];
-        //     }
+    //         bigIsEqual.in[1][i] <== base[i];
+    //     }
     //     bigIsEqual.in[1][CHUNK_NUMBER * 2] <== 0;
     
     //     bigIsEqual.out === 1;
     // }
 
 
-// use only for CHUNK_NUMBER == 2 ** x
-template BigModInvOptimisedOwerflow(CHUNK_SIZE, CHUNK_NUMBER) {
+template BigModInvOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER) {
     assert(CHUNK_SIZE <= 252);
-    signal input in[CHUNK_NUMBER];
+    signal input in[CHUNK_NUMBER_BASE];
     signal input modulus[CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
 
     signal input dummy;
     dummy * dummy === 0;
 
-    component reduce = RemoveOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER + 1);
+    component reduce = RemoveOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_BASE + 1);
     reduce.in <== in;
     reduce.dummy <== dummy;
 
-    var inv[200] = mod_inv(CHUNK_SIZE, CHUNK_NUMBER + 1, reduce.out, modulus);
+    var div_res[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER, (CHUNK_NUMBER_BASE + 1 - CHUNK_NUMBER), reduce.out, modulus);
+    var mod[CHUNK_NUMBER];
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        mod[i] = div_res[1][i];
+    }
+    var inv[200] = mod_inv(CHUNK_SIZE, CHUNK_NUMBER, mod, modulus);
 
     for (var i = 0; i < CHUNK_NUMBER; i++) {
         out[i] <-- inv[i];
     }
     
-    component mult = BigMultModPNonEqual(CHUNK_SIZE, CHUNK_NUMBER + 1, CHUNK_NUMBER, CHUNK_NUMBER);
+    component mult = BigMultModPNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE + 1, CHUNK_NUMBER, CHUNK_NUMBER);
     mult.in1 <== reduce.out;
     mult.in2 <== out;
     mult.modulus <== modulus;
@@ -201,7 +221,7 @@ template BigModInvOptimisedOwerflow(CHUNK_SIZE, CHUNK_NUMBER) {
 }
 
 
-template ScalarMultOverflow(CHUNK_SIZE, CHUNK_NUMBER){
+template ScalarMultOverflow(CHUNK_NUMBER){
     signal input in[CHUNK_NUMBER];
     signal input scalar;
     
