@@ -9,8 +9,8 @@ dev
 dev.*
 tools
 circuits/hasher/*
-circuits/ec/*
 circuits/babyjubjub/*
 test/circuits/babyjubjub/*
 test/montogomery.js
 input*.json
+tmp.circom

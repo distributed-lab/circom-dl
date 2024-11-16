@@ -7,23 +7,36 @@ include "./bigIntFunc.circom";
 include "../int/arithmetic.circom";
 include "./karatsuba.circom";
 
-// Here will be explanation what our big int is and how to use it
-// Same as default BigInt but we ignore overflow (a_i * 2 ** CHUNK_SIZE * i, here a_i can be greater than 2 ** CHUNK_SIZE)
-//-------------------------------------------------------------------------------------------------------------------------------------------------
-// Next templates are actual only for same chunk sizes of inputs, don`t use them without knowing what are u doing!!!
+// What BigInt in this lib means
+// We represent big number as array of chunks with some shunk_size (will be explained later) 
+// for this example we will use N for number, n for chunk size and k for chunk number:
+// N[k];
+// Number can be calculated by this formula:
+// N = N[0] * 2 ** (0 * n) + N[1] * 2 ** (1 * n) + ... + N[k - 1] * 2 ** ((k-1) * n)
+// By overflow we mean situation where N[i] >= 2 ** n
+// Without overflow every number has one and only one representation
+// To reduce overflow we must leave N[i] % 2 ** n for N[i] and add N[i] // 2 ** n to N[i + 1]
 
+// In this file we have operations for  big int but we ignore overflow (a_i * 2 ** CHUNK_SIZE * i, here a_i can be greater than 2 ** CHUNK_SIZE)
+// U should use it for some operation in a row for better optimisation
+//-------------------------------------------------------------------------------------------------------------------------------------------------
+
+// sum of each chunks with same positions for equal chunk numbers
 template BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     assert(CHUNK_SIZE <= 253);
     
     signal input in[2][CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
     signal input dummy;
+
+    dummy * dummy === 0;
     
     for (var i = 0; i < CHUNK_NUMBER; i++){
         out[i] <== in[0][i] + in[1][i] + dummy * dummy;
     }
 }
 
+// sum of each chunks with same positions for unequal chunk numbers
 template BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     
     signal input in1[CHUNK_NUMBER_GREATER];
@@ -39,7 +52,9 @@ template BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_L
     }
 }
 
-
+// multiplying 2 numbers with equal chunks ignoring overflows
+// out is in chunk number * 2 - 1
+// use it if chunk number != 2 ** k
 template BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     
     assert(CHUNK_SIZE <= 126);
@@ -47,9 +62,6 @@ template BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[2][CHUNK_NUMBER];
     signal input dummy;
     signal output out[CHUNK_NUMBER * 2 - 1];
-    
-    
-    // We can`t mult multiply 2 big nums without multiplying each chunks of first with each chunk of second
     
     signal tmpMults[CHUNK_NUMBER][CHUNK_NUMBER];
     for (var i = 0; i < CHUNK_NUMBER; i++){
@@ -97,6 +109,9 @@ template BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
+// multiplying 2 numbers with equal chunks ignoring overflows
+// out is in chunk number * 2 - 1
+// use it if chunk number == 2 ** k
 template BigMultOptimisedOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     
     assert(CHUNK_SIZE <= 126);
@@ -113,77 +128,107 @@ template BigMultOptimisedOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-// template BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER){
+// multiplying 2 numbers with unequal chunks ignoring overflows
+// out is in chunk number * 2 - 1
+template BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     
-    //     assert(CHUNK_SIZE <= 126);
+    assert(CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS <= 252);
+    assert(CHUNK_NUMBER_GREATER >= CHUNK_NUMBER_LESS);
     
-    //     signal input base[CHUNK_NUMBER * 2];
-    //     signal input modulus[CHUNK_NUMBER];
-    //     signal input dummy;
+    signal input in1[CHUNK_NUMBER_GREATER];
+    signal input in2[CHUNK_NUMBER_LESS];
+    signal input dummy;
+    signal output out[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
     
-    //     var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, base, modulus);
     
-    //     signal output div[CHUNK_NUMBER];
-    //     signal output mod[CHUNK_NUMBER];
+    // We can`t mult multiply 2 big nums without multiplying each chunks of first with each chunk of second
     
-    //     for (var i = 0; i < CHUNK_NUMBER; i++){
-    //         div[i] <-- long_division[0][i];
-    //         mod[i] <-- long_division[1][i];
-    //     }
+    signal tmpMults[CHUNK_NUMBER_GREATER][CHUNK_NUMBER_LESS];
+    for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
+        for (var j = 0; j < CHUNK_NUMBER_LESS; j++){
+            tmpMults[i][j] <== in1[i] * in2[j];
+        }
+    }
     
-    //     component multChecks[2];
-    //     multChecks[0] = BigMultOptimised(CHUNK_SIZE, CHUNK_NUMBER);
-    //     multChecks[1] = BigMultOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+    // left - in1[idx], right - in2[idx]  || n - CHUNK_NUMBER_GREATER, m - CHUNK_NUMBER_LESS
+    // 0*0 0*1 ... 0*n
+    // 1*0 1*1 ... 1*n
+    //  ⋮   ⋮    \   ⋮
+    // m*0 m*1 ... m*n
+    //
+    // result[idx].length = count(i+j === idx)
+    // result[0].length = 1 (i = 0; j = 0)
+    // result[1].length = 2 (i = 1; j = 0; i = 0; j = 1);
+    // result[i].length = { result[i-1].length + 1,  i <= CHUNK_NUMBER_LESS}
+    //                    {  result[i-1].length - 1,  i > CHUNK_NUMBER_GREATER}
+    //                    {  result[i-1].length,      CHUNK_NUMBER_LESS < i <= CHUNK_NUMBER_GREATER}
     
-    //     multChecks[0].in[0] <== div;
-    //     multChecks[0].in[1] <== modulus;
-    //     multChecks[0].dummy <== dummy;
+    signal tmpResult[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1][CHUNK_NUMBER_LESS];
     
-    //     for (var i = 0; i < CHUNK_NUMBER - 1; i++){
-    //         multChecks[1].in[0][i] <== div[i];
-    //     }
-    //     multChecks[1].in[0][CHUNK_NUMBER - 1] <== div[CHUNK_NUMBER - 1] + 1 + dummy * dummy;
-    //     multChecks[1].in[1] <== modulus;
-    //     multChecks[1].dummy <== dummy;
-    
-    //     // div * modulus <= base
-    //     // (div + 1) * modulus > base
-    //     component lessEqThan = BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER * 2);
-    //     component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER * 2);
-    
-    //     lessEqThan.in[0] <== multChecks[0].out;
-    //     lessEqThan.in[1] <== base;
-    //     lessEqThan.out === 1;
-    
-    //     greaterThan.in[0] <== multChecks[1].out;
-    //     greaterThan.in[1] <== base;
-    //     greaterThan.out === 1;
-    
-    //     //div * modulus + mod === base
-    
-    //     component bigAddCheck = BigAdd(CHUNK_SIZE, CHUNK_NUMBER * 2);
-    
-    //     bigAddCheck.in[0] <== multChecks[0].out;
-    //     for (var i = 0; i < CHUNK_NUMBER; i++){
-    //         bigAddCheck.in[1][i] <== mod[i];
-    //     }
-    //     for (var i = CHUNK_NUMBER; i < 2 * CHUNK_NUMBER; i++){
-    //         bigAddCheck.in[1][i] <== 0;
-    //     }
-    //     bigAddCheck.dummy <== dummy;
-    
-    //     component bigIsEqual = BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER * 2 + 1);
-    
-    //     bigIsEqual.in[0] <== bigAddCheck.out;
-    //     for (var i = 0; i < CHUNK_NUMBER * 2; i++){
-    //         bigIsEqual.in[1][i] <== base[i];
-    //     }
-    //     bigIsEqual.in[1][CHUNK_NUMBER * 2] <== 0;
-    
-    //     bigIsEqual.out === 1;
-    // }
+    for (var i = 0; i < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1; i++){
+        
+        if (i < CHUNK_NUMBER_LESS){
+            for (var j = 0; j < i + 1; j++){
+                if (j == 0){
+                    tmpResult[i][j] <== tmpMults[i - j][j];
+                } else {
+                    tmpResult[i][j] <== tmpMults[i - j][j] + tmpResult[i][j - 1] + dummy * dummy;
+                }
+            }
+            out[i] <== tmpResult[i][i];
+            
+        } else {
+            if (i < CHUNK_NUMBER_GREATER) {
+                for (var j = 0; j < CHUNK_NUMBER_LESS; j++){
+                    if (j == 0){
+                        tmpResult[i][j] <== tmpMults[i - j][j];
+                    } else {
+                        tmpResult[i][j] <== tmpMults[i - j][j] + tmpResult[i][j - 1] + dummy * dummy;
+                    }
+                }
+                out[i] <== tmpResult[i][CHUNK_NUMBER_LESS - 1];
+            } else {
+                for (var j = 0; j < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1 - i; j++){
+                    if (j == 0){
+                        tmpResult[i][j] <== tmpMults[CHUNK_NUMBER_GREATER - 1 - j][i + j - CHUNK_NUMBER_GREATER + 1];
+                    } else {
+                        tmpResult[i][j] <== tmpMults[CHUNK_NUMBER_GREATER - 1 - j][i + j - CHUNK_NUMBER_GREATER + 1] + tmpResult[i][j - 1];
+                    }
+                }
+                out[i] <== tmpResult[i][CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 2 - i];
+            }
+        }
+    }
+}
 
+// get mod of number with CHUNK_NUMBER_BASE chunks by modulus with CHUNK_NUMBER_MODULUS chunks
+// overflow shift is number ofadditional chunks needed to split number with overflow, put here 254 \ CHUNK_SIZE if u don`t know what u should put there
+// practically this is num of multiplications u did before, but it is better use num of muls + 1 because if u use at least one add or something similar to it too.
+// will fall if modulus[-1] == 0
+template BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS, OVERFLOW_SHIFT){
 
+    signal input base[CHUNK_NUMBER_BASE];
+    signal input modulus[CHUNK_NUMBER_MODULUS];
+    signal input dummy;
+
+    signal output mod[CHUNK_NUMBER_MODULUS];
+    signal output div[CHUNK_NUMBER_BASE + OVERFLOW_SHIFT - CHUNK_NUMBER_MODULUS + 1];
+
+    component reduce = RemoveOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_BASE + OVERFLOW_SHIFT);
+    reduce.in <== base;
+    reduce.dummy <== dummy;
+
+    component bigMod = BigModNonEqual2(CHUNK_SIZE, CHUNK_NUMBER_BASE + OVERFLOW_SHIFT, CHUNK_NUMBER_MODULUS);
+    bigMod.base <== reduce.out;
+    bigMod.modulus <== modulus;
+    bigMod.dummy <== dummy;
+
+    bigMod.mod ==> mod;
+    bigMod.div ==> div;
+}
+
+// calculate mod inverse of base with CHUNK_NUMBER_BASE by CHUNK_NUMBER modulus
+// will fall if modulus[-1] == 0
 template BigModInvOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER) {
     assert(CHUNK_SIZE <= 252);
     signal input in[CHUNK_NUMBER_BASE];
@@ -220,7 +265,7 @@ template BigModInvOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER) {
     }
 }
 
-
+// multiplying number with CHUNK_NUMBER by scalar, ignoring overflow
 template ScalarMultOverflow(CHUNK_NUMBER){
     signal input in[CHUNK_NUMBER];
     signal input scalar;
@@ -232,7 +277,8 @@ template ScalarMultOverflow(CHUNK_NUMBER){
     }
 }
 
-
+// removing overflow for CHUNK_NUMBER_OLD chunk number and get CHUNK_NUMBER_NEW number in out
+// even if CHUNK_NUMBER_NEW isn`t enought to get rid of all overflows, it puts all overflow only in last chunk, always leaving numbers equal
 template RemoveOverflow(CHUNK_SIZE, CHUNK_NUMBER_OLD, CHUNK_NUMBER_NEW){
     assert(CHUNK_SIZE <= 126);
     assert(CHUNK_NUMBER_OLD <= CHUNK_NUMBER_NEW);
@@ -288,14 +334,37 @@ template RemoveOverflow(CHUNK_SIZE, CHUNK_NUMBER_OLD, CHUNK_NUMBER_NEW){
     }
 }
 
+// computes modulus + in1 - in2 (WITHOUT % modulus!!!) with overflows, in1 and in2 shouldn`t have overflows and in1 < modulus, in2 < modulus!
+// use only if you undestand what are you doing!!!
+template BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in1[CHUNK_NUMBER];
+    signal input in2[CHUNK_NUMBER];
+    signal input modulus[CHUNK_NUMBER];
+    signal input dummy;
 
+    dummy * dummy === 0;
+
+    signal output out[CHUNK_NUMBER];
+
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        if (i == 0){
+            out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] + dummy * dummy;
+        } else {
+            if (i == CHUNK_NUMBER - 1){
+                out[i] <== modulus[i] + in1[i] - in2[i] - 1 + dummy * dummy;
+            } else {
+                out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] - 1 + dummy * dummy;
+            }
+        }
+    }
+}
 
 // Comparators
 //---------------------------------------------------------------------------------------------------------------------
-//
 
 // compare each chunk
-// !!!!!!!!!!!can be slightly optimised!!!!!!!!!
+// can be optimised by log_2(n) multiplying results vs n which is now, will be one later
+// use this for already redused inputs or if u know that they don`t contain any overflow (any mod template output, for example)
 template ForceEqual(CHUNK_NUMBER){
     signal input in[2][CHUNK_NUMBER];
     
@@ -335,34 +404,36 @@ template ReducedEqual(CHUNK_SIZE, CHUNK_NUMBER_OLD, CHUNK_NUMBER_NEW){
     forceEqual.in[1] <== reduce.out;
     
     out <== forceEqual.out;
-    log(out);
-
 }
 
-// 2 of nums are not reduced
-//todo: fix
-// template OverflowedEqual(CHUNK_SIZE, CHUNK_NUMBER_LESS, CHUNK_NUMBER_GREATER){
-//     signal input in1[CHUNK_NUMBER_LESS];
-//     signal input in2[CHUNK_NUMBER_GREATER];
-//     signal input dummy;
-//     dummy * dummy === 0;
-//     signal output out;
+// USE ONLY if u sure it will not affect your security, because it is possible to get 1 in out with non-equal inputs, be carefull with it!!!
+// this compares one chunk representation of nums, and if they are bigger than circom curve prime (~2**254), it will compare modulus by it
+// it always uses 5 constraints and allows to always get 1 for equal inputs
+// there is a way to get "collision" and get 1 for non equal chunks, however
+// it almost impossible to get it randomly (almost the same as hash sha-256 collision), but it can be calculated
+// it still doesn`t allowed to put anything that u want at witness and get valid proof, so it shouldn`t affect on security if it is one of many cheks in your circuits
+template SmartEqual(CHUNK_SIZE, CHUNK_NUMBER){
+	assert(CHUNK_NUMBER == 4 || CHUNK_NUMBER == 8 || CHUNK_NUMBER == 12);
+	signal input in[2][CHUNK_NUMBER];
+	signal output out;
+	signal input dummy;	dummy * dummy === 0;	component isEqual = IsEqual();	if (CHUNK_NUMBER == 4){
+		signal left4 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[0][0] + 2 ** (1 * CHUNK_SIZE) * in[0][1] + 2 ** (2 * CHUNK_SIZE) * in[0][2] + 2 ** (3 * CHUNK_SIZE) * in[0][3];
+		signal right4 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[1][0] + 2 ** (1 * CHUNK_SIZE) * in[1][1] + 2 ** (2 * CHUNK_SIZE) * in[1][2] + 2 ** (3 * CHUNK_SIZE) * in[1][3];
+		isEqual.in[0] <== left4;
+		isEqual.in[1] <== right4;
+	}
+	if (CHUNK_NUMBER == 8){
+		signal left8 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[0][0] + 2 ** (1 * CHUNK_SIZE) * in[0][1] + 2 ** (2 * CHUNK_SIZE) * in[0][2] + 2 ** (3 * CHUNK_SIZE) * in[0][3] + 2 ** (4 * CHUNK_SIZE) * in[0][4] + 2 ** (5 * CHUNK_SIZE) * in[0][5] + 2 ** (6 * CHUNK_SIZE) * in[0][6] + 2 ** (7 * CHUNK_SIZE) * in[0][7];
+		signal right8 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[1][0] + 2 ** (1 * CHUNK_SIZE) * in[1][1] + 2 ** (2 * CHUNK_SIZE) * in[1][2] + 2 ** (3 * CHUNK_SIZE) * in[1][3] + 2 ** (4 * CHUNK_SIZE) * in[1][4] + 2 ** (5 * CHUNK_SIZE) * in[1][5] + 2 ** (6 * CHUNK_SIZE) * in[1][6] + 2 ** (7 * CHUNK_SIZE) * in[1][7];
+		isEqual.in[0] <== left8;
+		isEqual.in[1] <== right8;
+	}
+	if (CHUNK_NUMBER == 12){
+		signal left12 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[0][0] + 2 ** (1 * CHUNK_SIZE) * in[0][1] + 2 ** (2 * CHUNK_SIZE) * in[0][2] + 2 ** (3 * CHUNK_SIZE) * in[0][3] + 2 ** (4 * CHUNK_SIZE) * in[0][4] + 2 ** (5 * CHUNK_SIZE) * in[0][5] + 2 ** (6 * CHUNK_SIZE) * in[0][6] + 2 ** (7 * CHUNK_SIZE) * in[0][7] + 2 ** (8 * CHUNK_SIZE) * in[0][8] + 2 ** (9 * CHUNK_SIZE) * in[0][9] + 2 ** (10 * CHUNK_SIZE) * in[0][10] + 2 ** (11 * CHUNK_SIZE) * in[0][11];
+		signal right12 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[1][0] + 2 ** (1 * CHUNK_SIZE) * in[1][1] + 2 ** (2 * CHUNK_SIZE) * in[1][2] + 2 ** (3 * CHUNK_SIZE) * in[1][3] + 2 ** (4 * CHUNK_SIZE) * in[1][4] + 2 ** (5 * CHUNK_SIZE) * in[1][5] + 2 ** (6 * CHUNK_SIZE) * in[1][6] + 2 ** (7 * CHUNK_SIZE) * in[1][7] + 2 ** (8 * CHUNK_SIZE) * in[1][8] + 2 ** (9 * CHUNK_SIZE) * in[1][9] + 2 ** (10 * CHUNK_SIZE) * in[1][10] + 2 ** (11 * CHUNK_SIZE) * in[1][11];
+		isEqual.in[0] <== left12;
+		isEqual.in[1] <== right12;
+	}
+	out <== isEqual.out;
+}
 
-
-//     component reduce[2];
-//     reduce[0] = RemoveOverflow(CHUNK_SIZE, CHUNK_NUMBER_LESS, CHUNK_NUMBER_GREATER);
-//     reduce[1] = RemoveOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_GREATER);
-
-//     reduce[0].in <== in1;
-//     reduce[0].dummy <== dummy;
-//     reduce[1].in <== in2;
-//     reduce[1].dummy <== dummy;
-
-//     component forceEqual = ForceEqual(CHUNK_NUMBER_GREATER);
-//     forceEqual.in[0] <== reduce[0].out;
-//     forceEqual.in[1] <== reduce[1].out;
-    
-//     out <== forceEqual.out;
-//     log(out);
-
-// }

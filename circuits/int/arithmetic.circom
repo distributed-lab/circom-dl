@@ -3,6 +3,11 @@ pragma circom 2.1.6;
 include "../bitify/comparators.circom";
 include "../bitify/bitify.circom";
 
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Some templates for num operations
+
+// gets inversion in circom prime field
+// out * in === 1
 template Inverse(){
     signal input in;
     signal output out;
@@ -10,7 +15,9 @@ template Inverse(){
     out * in === 1;
 }
 
-//use if u don`t know what is len of bit representation of in[0] is
+// THIS IS UNSECURE VERSION, NEVER (NEVER!!!!!!!!!!!!!) USE IT IN PRODUCTION!!!!
+// I hope secure version will appear later
+// use if u don`t know what is len of bit representation of in[0] is
 template DivisionStrict(){
     signal input in[2];
     
@@ -34,7 +41,9 @@ template DivisionStrict(){
     
 }
 
-//use this if u know what len of bit representation of in[1] is
+// THIS IS UNSECURE VERSION, NEVER (NEVER!!!!!!!!!!!!!) USE IT IN PRODUCTION!!!!!
+// I hope secure version will appear later
+// use this if u know what len of bit representation of in[1] is
 template Division(LEN){
     
     assert (LEN < 253);
@@ -60,7 +69,9 @@ template Division(LEN){
     
 }
 
-//don`t use it for 0!!!
+// calculated log_2 rounded down (for example, 2.3 ===> 2)
+// also can be used as index of first 1 bit in number
+// don`t use it for 0!!!
 template Log2CeilStrict(){
     signal input in;
     signal output out;
@@ -84,6 +95,9 @@ template Log2CeilStrict(){
     out <== sum[251];
 }
 
+// to calculate log ceil, we should convert num to bits, and if we know it`s len, we already know the answer
+// but if u know estimed range of num, u can use this to reduce num of constraints (num < 2 ** RANGE)
+// (u don`t need to use comvert nnum to 254 bits if u know that is always less that 1000, for example)
 template Log2Ceil(RANGE){
     signal input in;
     signal output out;
@@ -107,6 +121,8 @@ template Log2Ceil(RANGE){
     out <== sum[RANGE - 1];
 }
 
+// computes last bit of num with any bit len for 2 constraints
+// returns bit (0 or 1) and div - num << 1
 template GetLastBit(){
     signal input in;
     signal output bit;
@@ -119,6 +135,10 @@ template GetLastBit(){
     div * 2 + bit * bit === in;
 }
 
+// computes last n bits of any num
+// returns array of bits and div
+// in fact, this is also just a div for (2 ** N)
+// for now, this is only one secured div that can be used, 
 template GetLastNBits(N){
     signal input in;
     signal output div;

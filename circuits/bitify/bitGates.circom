@@ -1,5 +1,11 @@
 pragma circom  2.1.6;
 
+// Here are templates for all bit gates for any 1 or 2 inputs
+// for 1-input gates interface is input in and output out
+// for 2-input gates interface is input in[2] and output out
+// 3-input gates may be added later
+
+
 //One input gates
 //------------------------------------------------------------------------------------------------------------------------------------------------
 

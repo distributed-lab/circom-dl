@@ -440,116 +440,75 @@ function prod_mod_p(n, k, a, b, p){
     return result[1];
 }
 
-// function big_sqrt(CHUNK_SIZE, CHUNK_NUMBER, base, modulus){
-    
-//     var TWO[CHUNK_NUMBER];
+function long_add_mod(CHUNK_SIZE, CHUNK_NUMBER, A, B, P) {
+    var sum[200] = long_add(CHUNK_SIZE,CHUNK_NUMBER,A,B); 
+    var temp[2][200] = long_div2(CHUNK_SIZE,CHUNK_NUMBER,1,sum,P);
+    return temp[1];
+}
 
-//     TWO[0] = 2;
-
-//     for (var i = 1; i < CHUNK_NUMBER; i++){
-//         TWO[i] = 0;
-//     }
-
-//     var s = 0;
-
-//     var q[CHUNK_NUMBER];
-//     for (var i = 0; i < CHUNK_NUMBER - 1; i++){
-//         q[i] = modulus[i];
-//     }
-//     q[CHUNK_NUMBER - 1] = modulus[CHUNK_NUMBER - 1] - 1;
-
-//     var mod_minus_one[CHUNK_NUMBER];
-//     for (var i = 0; i < CHUNK_NUMBER - 1; i++){
-//         mod_minus_one[i] = modulus[i];
-//     }
-//     mod_minus_one[CHUNK_NUMBER - 1] = modulus[CHUNK_NUMBER - 1] - 1;
-    
-//     var half_mod_minus_one[CHUNK_NUMBER];
-//     for (var i = 0; i < CHUNK_NUMBER; i++){
-//         half_mod_minus_one[i] = long_div(CHUNK_SIZE, 1, CHUNK_NUMBER - 1, mod_minus_one, [2])[1][i];
-//     }
-
-//     var ZERO[200];
-//     for (var i = 0; i < 200; i++){
-//         ZERO[i] = 0;
-//     }
-
-//     var ONE[200];
-//     ONE[1] = 1;
-//     for (var i = 1; i < 200; i++){
-//         ONE[i] = 0;
-//     }
-//     while (long_div(CHUNK_SIZE, 1, CHUNK_NUMBER - 1, q, [2])[1] == ZERO) {
-//         s += 1;
-//         for (var i = 0; i < CHUNK_NUMBER; i++){
-//             q[i] = long_div(CHUNK_SIZE, 1, CHUNK_NUMBER - 1, q, [2])[1][i];
-//         }
-//     }
-
-//     var z[CHUNK_NUMBER];
-//     for (var i = 0; i < CHUNK_NUMBER; i++){
-//         z[i] = 0;
-//     }
-//     while (mod_exp(CHUNK_SIZE, CHUNK_NUMBER, z, half_mod_minus_one, modulus) == 1) {
-//         z[0] += 1;
-//     }
-
-//     var q_plus_one[CHUNK_NUMBER];
-
-//     q_plus_one[0] = 1 + q[0];
-//     for (var i = 1; i < CHUNK_NUMBER; i++){
-//         q_plus_one[i] = q[i];
-//     }
-
-//     var half_q_plus_one[CHUNK_NUMBER];
-
-//     for (var i = 0; i < CHUNK_NUMBER; i++){
-//         half_q_plus_one[i] = long_div(CHUNK_SIZE, 1, CHUNK_NUMBER - 1, q_plus_one, [2])[1][i];
-//     }
-
-//     // 3. Initialize variables
-//     var m = s;
-//     var c = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, z, q, modulus);
-//     var t = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, base, q, modulus);
-//     var r = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, base, half_q_plus_one, modulus);
+function long_add(CHUNK_SIZE, CHUNK_NUMBER, A, B){
+    var carry = 0;
+    var sum[200];
+    for(var i=0; i<CHUNK_NUMBER; i++){
+        var sumAndCarry[2] = SplitFn(A[i] + B[i] + carry, CHUNK_SIZE, CHUNK_SIZE);
+        sum[i] = sumAndCarry[0];
+        carry = sumAndCarry[1];
+    }
+    sum[CHUNK_NUMBER] = carry;
+    return sum;
+}
 
 
-//     var ONE_CHUNK_NUMBER[CHUNK_NUMBER];
-//     ONE_CHUNK_NUMBER[0] = 1; 
-//     for (var i = 1; i < CHUNK_NUMBER; i++){
-//         ONE_CHUNK_NUMBER[i] = 0;
-//     }
-//     // 4. Loop until `t == 1`
-//     while (t != ONE_CHUNK_NUMBER) {
-//         // Find the smallest integer `i` such that `t^(2^i) == 1 (mod modulus)`
-//         var i = 1;
-//         var exp[CHUNK_NUMBER];
-//         exp[0] = 2
-//         for (var i = 1; i < CHUNK_NUMBER; i++){
-//             exp[i] = 0;
-//         }
-//         while (mod_exp(CHUNK_SIZE, CHUNK_NUMBER, t, exp, modulus) != 1) {
-//             i += 1;
-//             exp = long_scalar_mult(CHUNK_SIZE, CHUNK_NUMBER, 2, exp);
-//         }
+function long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, A, B, P) {
+    if(long_gt(CHUNK_SIZE, CHUNK_NUMBER, B, A) == 1){
+        return long_add(CHUNK_SIZE, CHUNK_NUMBER, A, long_sub(CHUNK_SIZE,CHUNK_NUMBER,P,B));
+    }else{
+        return long_sub(CHUNK_SIZE, CHUNK_NUMBER, A, B);
+    }
+}
 
-//         var b = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, c, 2**(m - i - 1), modulus);
-        
-//         r = (r * b) % modulus;
+function prod_mod(CHUNK_SIZE, CHUNK_NUMBER, A, B, P) {
+    var prod[200] = prod(CHUNK_SIZE,CHUNK_NUMBER,A,B);
+    var temp[2][200] = long_div(CHUNK_SIZE,CHUNK_NUMBER,CHUNK_NUMBER, prod,P);
+    return temp[1];
+}
 
-//         var temp[200]; 
-//         temp = prod(CHUNK_SIZE, CHUNK_NUMBER, r, b);
-//         var temp2[2][200];
-//         temp2 = long_div(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, temp, p);
-//         out = temp2[1];
+function long_div2(CHUNK_SIZE, CHUNK_NUMBER, M, A, B){
+    var out[2][200];
+    // assume CHUNK_NUMBER+M < 200
+    var remainder[200];
+    for (var i = 0; i < M + CHUNK_NUMBER; i++) {
+        remainder[i] = A[i];
+    }
 
-//         t = (t * b * b) % modulus;
-//         c = (b * b) % modulus;
-
-//         c = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, b, b, modulus);
-//         m = i;
-//     }
-
-//     // `r` is the square root of `base` modulo `modulus`
-//     return r;
-// }
+    var dividend[200];
+    for (var i = M; i >= 0; i--) {
+        if (i == M) {
+            dividend[CHUNK_NUMBER] = 0;
+            for (var j = CHUNK_NUMBER - 1; j >= 0; j--) {
+                dividend[j] = remainder[j + M];
+            }
+        } else {
+            for (var j = CHUNK_NUMBER; j >= 0; j--) {
+                dividend[j] = remainder[j + i];
+            }
+        }
+        out[0][i] = short_div(CHUNK_SIZE, CHUNK_NUMBER, dividend, B);
+        var MULT_SHIFT[200] = long_scalar_mult(CHUNK_SIZE, CHUNK_NUMBER, out[0][i], B);
+        var subtrahend[200];
+        for (var j = 0; j < M + CHUNK_NUMBER; j++) {
+            subtrahend[j] = 0;
+        }
+        for (var j = 0; j <= CHUNK_NUMBER; j++) {
+            if (i + j < M + CHUNK_NUMBER) {
+               subtrahend[i + j] = MULT_SHIFT[j];
+            }
+        }
+        remainder = long_sub(CHUNK_SIZE, M + CHUNK_NUMBER, remainder, subtrahend);
+    }
+    for (var i = 0; i < CHUNK_NUMBER; i++) {
+        out[1][i] = remainder[i];
+    }
+    out[1][CHUNK_NUMBER] = 0;
+    return out;
+}
