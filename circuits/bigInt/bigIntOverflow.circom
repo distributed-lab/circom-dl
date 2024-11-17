@@ -413,7 +413,7 @@ template ReducedEqual(CHUNK_SIZE, CHUNK_NUMBER_OLD, CHUNK_NUMBER_NEW){
 // it almost impossible to get it randomly (almost the same as hash sha-256 collision), but it can be calculated
 // it still doesn`t allowed to put anything that u want at witness and get valid proof, so it shouldn`t affect on security if it is one of many cheks in your circuits
 template SmartEqual(CHUNK_SIZE, CHUNK_NUMBER){
-	assert(CHUNK_NUMBER == 4 || CHUNK_NUMBER == 8 || CHUNK_NUMBER == 12);
+	assert(CHUNK_NUMBER == 4 || CHUNK_NUMBER == 6 || CHUNK_NUMBER == 8 || CHUNK_NUMBER == 12 || CHUNK_NUMBER == 18);
 	signal input in[2][CHUNK_NUMBER];
 	signal output out;
 	signal input dummy;	dummy * dummy === 0;	component isEqual = IsEqual();	if (CHUNK_NUMBER == 4){
@@ -421,6 +421,12 @@ template SmartEqual(CHUNK_SIZE, CHUNK_NUMBER){
 		signal right4 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[1][0] + 2 ** (1 * CHUNK_SIZE) * in[1][1] + 2 ** (2 * CHUNK_SIZE) * in[1][2] + 2 ** (3 * CHUNK_SIZE) * in[1][3];
 		isEqual.in[0] <== left4;
 		isEqual.in[1] <== right4;
+	}
+	if (CHUNK_NUMBER == 6){
+		signal left6 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[0][0] + 2 ** (1 * CHUNK_SIZE) * in[0][1] + 2 ** (2 * CHUNK_SIZE) * in[0][2] + 2 ** (3 * CHUNK_SIZE) * in[0][3] + 2 ** (4 * CHUNK_SIZE) * in[0][4] + 2 ** (5 * CHUNK_SIZE) * in[0][5];
+		signal right6 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[1][0] + 2 ** (1 * CHUNK_SIZE) * in[1][1] + 2 ** (2 * CHUNK_SIZE) * in[1][2] + 2 ** (3 * CHUNK_SIZE) * in[1][3] + 2 ** (4 * CHUNK_SIZE) * in[1][4] + 2 ** (5 * CHUNK_SIZE) * in[1][5];
+		isEqual.in[0] <== left6;
+		isEqual.in[1] <== right6;
 	}
 	if (CHUNK_NUMBER == 8){
 		signal left8 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[0][0] + 2 ** (1 * CHUNK_SIZE) * in[0][1] + 2 ** (2 * CHUNK_SIZE) * in[0][2] + 2 ** (3 * CHUNK_SIZE) * in[0][3] + 2 ** (4 * CHUNK_SIZE) * in[0][4] + 2 ** (5 * CHUNK_SIZE) * in[0][5] + 2 ** (6 * CHUNK_SIZE) * in[0][6] + 2 ** (7 * CHUNK_SIZE) * in[0][7];
@@ -434,6 +440,11 @@ template SmartEqual(CHUNK_SIZE, CHUNK_NUMBER){
 		isEqual.in[0] <== left12;
 		isEqual.in[1] <== right12;
 	}
+	if (CHUNK_NUMBER == 18){
+		signal left18 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[0][0] + 2 ** (1 * CHUNK_SIZE) * in[0][1] + 2 ** (2 * CHUNK_SIZE) * in[0][2] + 2 ** (3 * CHUNK_SIZE) * in[0][3] + 2 ** (4 * CHUNK_SIZE) * in[0][4] + 2 ** (5 * CHUNK_SIZE) * in[0][5] + 2 ** (6 * CHUNK_SIZE) * in[0][6] + 2 ** (7 * CHUNK_SIZE) * in[0][7] + 2 ** (8 * CHUNK_SIZE) * in[0][8] + 2 ** (9 * CHUNK_SIZE) * in[0][9] + 2 ** (10 * CHUNK_SIZE) * in[0][10] + 2 ** (11 * CHUNK_SIZE) * in[0][11] + 2 ** (12 * CHUNK_SIZE) * in[0][12] + 2 ** (13 * CHUNK_SIZE) * in[0][13] + 2 ** (14 * CHUNK_SIZE) * in[0][14] + 2 ** (15 * CHUNK_SIZE) * in[0][15] + 2 ** (16 * CHUNK_SIZE) * in[0][16] + 2 ** (17 * CHUNK_SIZE) * in[0][17];
+		signal right18 <== dummy * dummy + 2 ** (0 * CHUNK_SIZE) * in[1][0] + 2 ** (1 * CHUNK_SIZE) * in[1][1] + 2 ** (2 * CHUNK_SIZE) * in[1][2] + 2 ** (3 * CHUNK_SIZE) * in[1][3] + 2 ** (4 * CHUNK_SIZE) * in[1][4] + 2 ** (5 * CHUNK_SIZE) * in[1][5] + 2 ** (6 * CHUNK_SIZE) * in[1][6] + 2 ** (7 * CHUNK_SIZE) * in[1][7] + 2 ** (8 * CHUNK_SIZE) * in[1][8] + 2 ** (9 * CHUNK_SIZE) * in[1][9] + 2 ** (10 * CHUNK_SIZE) * in[1][10] + 2 ** (11 * CHUNK_SIZE) * in[1][11] + 2 ** (12 * CHUNK_SIZE) * in[1][12] + 2 ** (13 * CHUNK_SIZE) * in[1][13] + 2 ** (14 * CHUNK_SIZE) * in[1][14] + 2 ** (15 * CHUNK_SIZE) * in[1][15] + 2 ** (16 * CHUNK_SIZE) * in[1][16] + 2 ** (17 * CHUNK_SIZE) * in[1][17];
+		isEqual.in[0] <== left18;
+		isEqual.in[1] <== right18;
+	}
 	out <== isEqual.out;
 }
-

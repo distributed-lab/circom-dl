@@ -56,20 +56,43 @@ function point_double(x1, y1, a, p) {
     p = BigInt(p);
 
     if (y1 === 0n) {
-        // Point at infinity (edge case for doubling)
-        return { x: null, y: null }; // Return nulls to represent infinity
+        return { x: null, y: null }; 
     }
 
-    // Calculate λ
     let lambda_num = (3n * x1 * x1 + a) % p;
     let lambda_den = modInverse(2n * y1, p);
     let lam = (lambda_num * lambda_den) % p;
 
-    // Calculate x3 and y3
     let x3 = (lam * lam - 2n * x1) % p;
     let y3 = (lam * (x1 - x3) - y1) % p;
 
-    // Handle negative values to ensure they are within field size
+    if (x3 < 0n) x3 += p;
+    if (y3 < 0n) y3 += p;
+
+    return { x: x3, y: y3 };
+}
+
+function point_add(x1, y1, x2, y2, p) {
+    x1 = BigInt(x1);
+    y1 = BigInt(y1);
+    x2 = BigInt(x2);
+    y2 = BigInt(y2);
+    p = BigInt(p);
+
+    if (x1 === x2 && y1 === y2) {
+        throw new Error("Points are the same; use point_double instead.");
+    }
+
+    if (x1 === x2) {
+        return { x: null, y: null };
+    }
+    let lambda_num = (p + y2 - y1) % p;
+    let lambda_den = modInverse((p + x2 - x1) % p, p);
+    let lam = (lambda_num * lambda_den) % p;
+
+    let x3 = (2n * p + lam * lam - x1 - x2) % p;
+    let y3 = (p + lam * (x1 - x3) - y1) % p;
+
     if (x3 < 0n) x3 += p;
     if (y3 < 0n) y3 += p;
 
@@ -96,7 +119,7 @@ async function testOnCurve(input1, input2, circuit){
         if (real_result) {
             throw new Error(`Unexpected failure for P(${input1}, ${input2}) on curve.`);
         } else {
-            console.log(`Predicted failure for P(${input1}, ${input2}) correctly handled.`);
+            console.log(`Predicted failure for P(${input1}, ${input2}) not on curve correctly handled.`);
         }
     }
 }
@@ -117,6 +140,39 @@ async function testDouble(input1, input2, circuit){
         assert(circuit_result[i] == real_result[i], `double(${input1}; ${input2})`);
     }
 }
+
+async function testAdd(input1, input2, input3, input4, circuit){
+
+    let added = point_add(input1, input2, input3, input4, 115792089237316195423570985008687907853269984665640564039457584007908834671663n)
+
+    let real_result = bigintToArray(64, 4, added.x).concat(bigintToArray(64, 4, added.y));
+
+    const w = await circuit.calculateWitness({in1: [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)], in2: [bigintToArray(64, 4, input3), bigintToArray(64, 4, input4)], dummy: 0n}, true);
+
+    let circuit_result = w.slice(1, 1+8);
+
+    for (var i = 0; i < 8; i++){
+        assert(circuit_result[i] == real_result[i], `add(${input1}; ${input2}) + (${input3}, ${input4})`);
+    }
+}
+
+describe("Add test", function () {
+
+    this.timeout(100000);
+    let circuit;
+
+    before(async () => {
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "ec", "add.circom"));
+    });
+
+    it("G + 2 * G", async function () {
+        await testAdd(55066263022277343669578718895168534326250603453777594175500187360389116729240n, 32670510020758816978083085130507043184471273380659243275938904335757337482424n, 89565891926547004231252920425935692360644145829622209833684329913297188986597n, 12158399299693830322967808612713398636155367887041628176798871954788371653930n, circuit);
+    });
+
+    it("P(112711660439710606056748659173929673102114977341539408544630613555209775888121, 25583027980570883691656905877401976406448868254816295069919888960541586679410) + P(89565891926547004231252920425935692360644145829622209833684329913297188986597, 12158399299693830322967808612713398636155367887041628176798871954788371653930)", async function () {
+        await testAdd(112711660439710606056748659173929673102114977341539408544630613555209775888121n, 25583027980570883691656905877401976406448868254816295069919888960541586679410n, 89565891926547004231252920425935692360644145829622209833684329913297188986597n, 12158399299693830322967808612713398636155367887041628176798871954788371653930n, circuit);
+    });
+});
 
 describe("Double test", function () {
 
