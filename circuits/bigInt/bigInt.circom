@@ -3,6 +3,7 @@ pragma circom 2.1.6;
 include "../bitify/comparators.circom";
 include "../bitify/bitify.circom";
 include "./bigIntFunc.circom";
+include "./bigIntOverflow.circom";
 include "../int/arithmetic.circom";
 include "./karatsuba.circom";
 
@@ -280,16 +281,17 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     bigAddCheck.in2 <== mod;
     bigAddCheck.dummy <== dummy;
 
-    component bigIsEqual = BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER * 2 + 2);
-    bigIsEqual.in[0] <== bigAddCheck.out;
+
+    component smartEqual = SmartEqual(CHUNK_SIZE, CHUNK_NUMBER * 2 + 2);
+    smartEqual.in[0] <== bigAddCheck.out;
     for (var i = 0; i < CHUNK_NUMBER * 2; i++){
-        bigIsEqual.in[1][i] <== base[i];
+        smartEqual.in[1][i] <== base[i];
     }
-    bigIsEqual.in[1][CHUNK_NUMBER * 2] <== 0;
-    bigIsEqual.in[1][CHUNK_NUMBER * 2 + 1] <== 0;
+    smartEqual.in[1][CHUNK_NUMBER * 2] <== 0;
+    smartEqual.in[1][CHUNK_NUMBER * 2 + 1] <== 0;
+    smartEqual.dummy <== dummy;
     
-    bigIsEqual.out === 1;
-    
+    smartEqual.out === 1;
 }
 
 // calculates in[0] * in[1] % in[2], all in[i] has CHUNK_NUMBER chunks
@@ -682,15 +684,16 @@ template BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     bigAddCheck.in2 <== mod;
     bigAddCheck.dummy <== dummy;
 
-    component bigIsEqual = BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE + 2);
-    bigIsEqual.in[0] <== bigAddCheck.out;
+    component smartEqual = SmartEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE + 2);
+    smartEqual.in[0] <== bigAddCheck.out;
     for (var i = 0; i < CHUNK_NUMBER_BASE; i++){
-        bigIsEqual.in[1][i] <== base[i];
+        smartEqual.in[1][i] <== base[i];
     }
-    bigIsEqual.in[1][CHUNK_NUMBER_BASE] <== 0;
-    bigIsEqual.in[1][CHUNK_NUMBER_BASE + 1] <== 0;
+    smartEqual.in[1][CHUNK_NUMBER_BASE] <== 0;
+    smartEqual.in[1][CHUNK_NUMBER_BASE + 1] <== 0;
+    smartEqual.dummy <== dummy;
     
-    bigIsEqual.out === 1;
+    smartEqual.out === 1;
 }
 
 // computes in1 * in2 mod modulus
@@ -845,7 +848,7 @@ template BigGreaterEqThan(CHUNK_SIZE, CHUNK_NUMBER){
 }
 
 // force equal by all chunks with same position
-// u also can do it for 5 constrains with some assumptions, check SmartEqual from "./bigIntOverflow"
+// u also can do it for 3 constrains with some assumptions, check SmartEqual from "./bigIntOverflow"
 // it is possible to save some constraints by log_2(n) operations, not n 
 template BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER) {
     signal input in[2][CHUNK_NUMBER];
