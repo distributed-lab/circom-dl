@@ -218,7 +218,7 @@ template BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS, OVE
     reduce.in <== base;
     reduce.dummy <== dummy;
 
-    component bigMod = BigModNonEqual2(CHUNK_SIZE, CHUNK_NUMBER_BASE + OVERFLOW_SHIFT, CHUNK_NUMBER_MODULUS);
+    component bigMod = BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE + OVERFLOW_SHIFT, CHUNK_NUMBER_MODULUS);
     bigMod.base <== reduce.out;
     bigMod.modulus <== modulus;
     bigMod.dummy <== dummy;

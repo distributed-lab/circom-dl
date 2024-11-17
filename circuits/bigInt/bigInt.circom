@@ -236,79 +236,65 @@ template BigMultOptimised(CHUNK_SIZE, CHUNK_NUMBER){
     out[CHUNK_NUMBER * 2 - 1] <== getLastNBits[CHUNK_NUMBER * 2 - 2].div;
 }
 
-// DEPRECATED METHOD, will be removed later
+// calculates div mod for base with CHUNK_NUMBER * 2 chunks by modulus with CHUNK_NUMBER chunks
+// detailed explanation of algo can be found in BigModNonEqual template from this file, they do almost the same
 template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     
-    assert(CHUNK_SIZE <= 126);
-    
+    assert(CHUNK_NUMBER * 2 <= 253);
+
     signal input base[CHUNK_NUMBER * 2];
     signal input modulus[CHUNK_NUMBER];
     signal input dummy;
-    
+
     var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, base, modulus);
     
-    signal output div[CHUNK_NUMBER];
+    signal output div[CHUNK_NUMBER + 1];
     signal output mod[CHUNK_NUMBER];
     
-    for (var i = 0; i < CHUNK_NUMBER; i++){
+    for (var i = 0; i < CHUNK_NUMBER + 1; i++){
         div[i] <-- long_division[0][i];
+    }
+    
+    for (var i = 0; i < CHUNK_NUMBER; i++){
         mod[i] <-- long_division[1][i];
     }
     
-    component multChecks[2];
-    multChecks[0] = BigMultOptimised(CHUNK_SIZE, CHUNK_NUMBER);
-    multChecks[1] = BigMultOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+    component multChecks;
+    multChecks = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER + 1, CHUNK_NUMBER);
     
-    multChecks[0].in[0] <== div;
-    multChecks[0].in[1] <== modulus;
-    multChecks[0].dummy <== dummy;
+    multChecks.in1 <== div;
+    multChecks.in2 <== modulus;
+    multChecks.dummy <== dummy;
+
+    component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER);
     
-    for (var i = 0; i < CHUNK_NUMBER - 1; i++){
-        multChecks[1].in[0][i] <== div[i];
-    }
-    multChecks[1].in[0][CHUNK_NUMBER - 1] <== div[CHUNK_NUMBER - 1] + 1 + dummy * dummy;
-    multChecks[1].in[1] <== modulus;
-    multChecks[1].dummy <== dummy;
-    
-    // div * modulus <= base
-    // (div + 1) * modulus > base
-    component lessEqThan = BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER * 2);
-    component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER * 2);
-    
-    lessEqThan.in[0] <== multChecks[0].out;
-    lessEqThan.in[1] <== base;
-    lessEqThan.out === 1;
-    
-    greaterThan.in[0] <== multChecks[1].out;
-    greaterThan.in[1] <== base;
+    greaterThan.in[0] <== modulus;
+    greaterThan.in[1] <== mod;
     greaterThan.out === 1;
     
     //div * modulus + mod === base
     
-    component bigAddCheck = BigAdd(CHUNK_SIZE, CHUNK_NUMBER * 2);
+    component bigAddCheck = BigAddNonEqual(CHUNK_SIZE, CHUNK_NUMBER * 2 + 1, CHUNK_NUMBER);
     
-    bigAddCheck.in[0] <== multChecks[0].out;
-    for (var i = 0; i < CHUNK_NUMBER; i++){
-        bigAddCheck.in[1][i] <== mod[i];
-    }
-    for (var i = CHUNK_NUMBER; i < 2 * CHUNK_NUMBER; i++){
-        bigAddCheck.in[1][i] <== 0;
-    }
+    bigAddCheck.in1 <== multChecks.out;
+    bigAddCheck.in2 <== mod;
     bigAddCheck.dummy <== dummy;
-    
-    component bigIsEqual = BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER * 2 + 1);
-    
+
+    component bigIsEqual = BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER * 2 + 2);
     bigIsEqual.in[0] <== bigAddCheck.out;
     for (var i = 0; i < CHUNK_NUMBER * 2; i++){
         bigIsEqual.in[1][i] <== base[i];
     }
     bigIsEqual.in[1][CHUNK_NUMBER * 2] <== 0;
+    bigIsEqual.in[1][CHUNK_NUMBER * 2 + 1] <== 0;
     
     bigIsEqual.out === 1;
+    
 }
 
-// DEPRECATED METHOD, will be removed later
-// use only for CHUNK_NUMBER == 2 ** x
+// calculates in[0] * in[1] % in[2], all in[i] has CHUNK_NUMBER chunks
+// if in[2] last chunk == 0, error will occur
+// use only for CHUNK_NUMBER == 2 ** x, otherwise error will occure
 template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[3][CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
@@ -414,8 +400,8 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, E_BITS) {
 }
 
 // use only for CHUNK_NUMBER == 2 ** x
-// calls deprecated method, use BigModInvOverflow from "./bigIntOverflow" for now
-// still works, just uses a lot more constraints that should
+// calculates in ^ (-1) % modulus;
+// in, modulus has CHUNK_NUMBER
 template BigModInvOptimised(CHUNK_SIZE, CHUNK_NUMBER) {
     assert(CHUNK_SIZE <= 252);
     signal input in[CHUNK_NUMBER];
@@ -626,98 +612,6 @@ template BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     }
 }
 
-
-// depracated, uses more constrains than needed
-template BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
-    
-    assert(CHUNK_NUMBER_BASE <= 253);
-    assert(CHUNK_NUMBER_MODULUS <= 253);
-    assert(CHUNK_NUMBER_MODULUS <= CHUNK_NUMBER_BASE);
-    
-    var CHUNK_NUMBER_DIV = CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS;
-    
-    signal input base[CHUNK_NUMBER_BASE];
-    signal input modulus[CHUNK_NUMBER_MODULUS];
-    signal input dummy;
-    
-    var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV, base, modulus);
-    
-    signal output div[CHUNK_NUMBER_DIV];
-    signal output mod[CHUNK_NUMBER_MODULUS];
-    
-    for (var i = 0; i < CHUNK_NUMBER_DIV; i++){
-        div[i] <-- long_division[0][i];
-    }
-    
-    for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++){
-        mod[i] <-- long_division[1][i];
-    }
-    
-    component multChecks[2];
-    if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
-        multChecks[0] = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
-        multChecks[1] = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
-        
-        multChecks[0].in1 <== div;
-        multChecks[0].in2 <== modulus;
-        
-        for (var i = 0; i < CHUNK_NUMBER_DIV - 1; i++){
-            multChecks[1].in1[i] <== div[i];
-        }
-        multChecks[1].in1[CHUNK_NUMBER_DIV - 1] <== div[CHUNK_NUMBER_DIV - 1] + 1;
-        multChecks[1].in2 <== modulus;
-    } else {
-        multChecks[0] = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
-        multChecks[1] = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
-        
-        multChecks[0].in2 <== div;
-        multChecks[0].in1 <== modulus;
-        
-        for (var i = 0; i < CHUNK_NUMBER_DIV - 1; i++){
-            multChecks[1].in2[i] <== div[i];
-        }
-        multChecks[1].in2[CHUNK_NUMBER_DIV - 1] <== div[CHUNK_NUMBER_DIV - 1] + 1;
-        multChecks[1].in1 <== modulus;
-    }
-    multChecks[0].dummy <== dummy;
-    multChecks[1].dummy <== dummy;
-    
-    
-    
-    // div * modulus <= base
-    // (div + 1) * modulus > base
-    component lessEqThan = BigLessEqThan(CHUNK_SIZE, CHUNK_NUMBER_BASE);
-    component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER_BASE);
-    
-    lessEqThan.in[0] <== multChecks[0].out;
-    lessEqThan.in[1] <== base;
-    
-    lessEqThan.out === 1;
-    
-    greaterThan.in[0] <== multChecks[1].out;
-    greaterThan.in[1] <== base;
-    greaterThan.out === 1;
-    
-    //div * modulus + mod === base
-    
-    component bigAddCheck = BigAddNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS);
-    
-    bigAddCheck.in1 <== multChecks[0].out;
-    bigAddCheck.in2 <== mod;
-    bigAddCheck.dummy <== dummy;
-    
-    component bigIsEqual = BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE + 1);
-    
-    bigIsEqual.in[0] <== bigAddCheck.out;
-    for (var i = 0; i < CHUNK_NUMBER_BASE; i++){
-        bigIsEqual.in[1][i] <== base[i];
-    }
-    bigIsEqual.in[1][CHUNK_NUMBER_BASE] <== 0;
-    
-    bigIsEqual.out === 1;
-}
-
-
 // compute mod and div for bigInt, we can`t do it separatly anyway
 // use vars to compute them, and this checks to secure witness from changing:
 // a / b = c;
@@ -734,7 +628,7 @@ template BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
 // a = bc + d so bc + d >= bc so d >= 0 
 // but we don`t need it for big nums, where we can`t have anyway
 // outs are mod with CHUNK_NUMBER_MODULUS and div with CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS +1 chunks
-template BigModNonEqual2(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
+template BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     
     assert(CHUNK_NUMBER_BASE <= 253);
     assert(CHUNK_NUMBER_MODULUS <= 253);
@@ -816,7 +710,7 @@ template BigMultModPNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS
     bigMult.in2 <== in2;
     bigMult.dummy <== dummy;
     
-    component bigMod = BigModNonEqual2(CHUNK_SIZE, CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS, CHUNK_NUMBER_MODULUS);
+    component bigMod = BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS, CHUNK_NUMBER_MODULUS);
     bigMod.base <== bigMult.out;
     bigMod.modulus <== modulus;
     bigMod.dummy <== dummy;
@@ -973,6 +867,3 @@ template BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER) {
     }
     out <== equalResults[CHUNK_NUMBER - 1];
 }
-
-
-

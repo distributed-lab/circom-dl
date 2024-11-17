@@ -27,10 +27,10 @@ async function testMod(input1, input2, circuit){
 
     const w = await circuit.calculateWitness({base: input[0], modulus: input[1], dummy: 0n}, true);
 
-    let circuit_result = w.slice(1+4, 1+4*2);
+    let circuit_result = w.slice(1+5, 1+5+4);
 
     for (var i = 0; i < 4; i++){
-        assert(circuit_result[i] == real_result[i], `${input1} % ${input2}`)
+        assert(circuit_result[i] == real_result[i], `${input1} % ${input2}, equal`)
     }
 
 }
@@ -42,12 +42,12 @@ async function testModNonEqual(input1, input2, circuit){
 
     const w = await circuit.calculateWitness({base: input[0], modulus:input[1], dummy: 0n}, true);
 
-    let circuit_result = w.slice(1+2, 1+2+4);
+    let circuit_result = w.slice(1+3, 1+3+4);
 
 
 
     for (var i = 0; i < 4; i++){
-        assert(circuit_result[i] == real_result[i], `${input1} % ${input2}`)
+        assert(circuit_result[i] == real_result[i], `${input1} % ${input2}, non equal`)
     }
 
 }
