@@ -359,13 +359,6 @@ template BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-template BigMultPredefined(CHUNK_SIZE, CHUNK_NUMBER, P){
-    signal input in[CHUNK_NUMBER];
-    signal output out[CHUNK_NUMBER * 2 - 1];
-
-    
-}
-
 // Comparators
 //---------------------------------------------------------------------------------------------------------------------
 

@@ -15,3 +15,4 @@ test/montogomery.js
 input*.json
 tmp.circom
 tmp.txt
+bigIntPredefined.circom

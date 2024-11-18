@@ -10,7 +10,8 @@ include "../bigInt/bigIntFunc.circom";
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Don`t use next templates within default point operations without understanding what are u doing, default curve operations will be below
-
+// They work fine, were used for deprecated methods
+// THEY ARE NOT ENOUGHT TO CHECK ADDITION / DOUBLING, ANY Y CALCULATED BY CORRECT FORMULA FOR ANY WILL GIVE CORRECT RESULT
 
 // Check is point on tangent (for doubling check)
 // (x, y), point that was doubled, (x3, y3) - result 
@@ -241,10 +242,11 @@ template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
 }
 
+// THIS IS UNSECURE, NEVER (NEVER!!!!!!!!!) USE IT IN PRODUCTION!!!!!!!!!!!
 // Calculate doubled point by vars, then check if returned point lies on tangent
 // Slightly recomended to check output for PointOnCurve if it is last operation for point,
 // but it isn`t nessesary if it is operation in middle, it will fail in next point operation
-template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+template EllipticCurveDoubleDEPRECATED(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     signal input in[2][CHUNK_NUMBER];
     signal output out[2][CHUNK_NUMBER];
@@ -276,10 +278,11 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
 }
 
+// THIS IS UNSECURE, NEVER (NEVER!!!!!!!!!) USE IT IN PRODUCTION!!!!!!!!!!!
 // Calculate sum of points by vars, then check if returned point is sum of 2 points
 // Slightly recomended to check output for PointOnCurve if it is last operation for point,
 // but it isn`t nessesary if it is operation in middle, it will fail in next point operation
-template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+template EllipticCurveAddDEPRECATED(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     signal input in1[2][CHUNK_NUMBER];
     signal input in2[2][CHUNK_NUMBER];
@@ -309,4 +312,238 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     additionCheck.in2 <== in2;
     additionCheck.in3 <== out;
     additionCheck.dummy <== dummy;  
+}
+
+// λ = (3 * x ** 2 + a) / (2 * y)
+// x3 = λ * λ - 2 * x
+// y3 = λ * (x - x3) - y
+template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+    signal input in[2][CHUNK_NUMBER];
+    signal output out[2][CHUNK_NUMBER];
+    signal input dummy;
+    dummy * dummy === 0;
+
+    // x * x
+    component mult = BigMultOptimisedOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    mult.in[0] <== in[0];
+    mult.in[1] <== in[0];
+    mult.dummy <== dummy;
+    
+    // 3 * x * x
+    component scalarMult = ScalarMultOverflow(CHUNK_NUMBER * 2 - 1);
+    scalarMult.scalar <== 3;
+    scalarMult.in <== mult.out;
+    
+    // 3 * x * x + a
+    component add = BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
+    add.in1 <== scalarMult.out;
+    add.in2 <== A;
+    add.dummy <== dummy;
+    
+    // 2 * y
+    component scalarMult2 = ScalarMultOverflow(CHUNK_NUMBER);
+    scalarMult2.in <== in[1];
+    scalarMult2.scalar <== 2;
+    
+    // (2 * y) ** -1
+    component modInv = BigModInvOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
+    modInv.in <== scalarMult2.out;
+    modInv.modulus <== P;
+    modInv.dummy <== dummy;
+    
+    // (3 * x * x + a) * 1 / (2 * y)
+    component mult2 = BigMultNonEqualOverflow(CHUNK_SIZE, 2 * CHUNK_NUMBER - 1, CHUNK_NUMBER);
+    mult2.in1 <== add.out;
+    mult2.in2 <== modInv.out;
+    mult2.dummy <== dummy;
+    
+    // ((3 * x * x + a) * 1 / (2 * y)) % p ==> λ
+    component mod = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
+    mod.base <== mult2.out;
+    mod.modulus <== P;
+    mod.dummy <== dummy;
+    
+    // λ * λ
+    component mult3 = BigMultOptimisedOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    mult3.in[0] <== mod.mod;
+    mult3.in[1] <== mod.mod;
+    mult3.dummy <== dummy;
+    
+    // P - x
+    component sub = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    sub.in1 <== P;
+    sub.in2 <== in[0];
+    sub.modulus <== P;
+    sub.dummy <== dummy;
+
+    // 2 * P - 2 * x
+    component scalarMult3 = ScalarMultOverflow(CHUNK_NUMBER);
+    scalarMult3.in <== sub.out;
+    scalarMult3.scalar <== 2;
+
+    // λ * λ + 2 * P - 2 * x
+    component add2 = BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
+    add2.in1 <== mult3.out;
+    add2.in2 <== scalarMult3.out;
+    add2.dummy <== dummy;
+    
+    // (λ * λ + 2 * P - 2 * x) % p ==> x3
+    component mod2 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
+    mod2.base <== add2.out;
+    mod2.modulus <== P;
+    mod2.dummy <== dummy;
+    
+    out[0] <== mod2.mod;
+
+    // x1 - x3
+    component sub2 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    sub2.in1 <== in[0];
+    sub2.in2 <== out[0];
+    sub2.modulus <== P;
+    sub2.dummy <== dummy;
+    
+    // λ * (x1 - x3)
+    component mult4 = BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
+    mult4.in1 <== mod.mod;
+    mult4.in2 <== sub2.out;
+    mult4.dummy <== dummy;
+
+    // P - y
+    component sub3 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    sub3.in1 <== P;
+    sub3.in2 <== in[1];
+    sub3.modulus <== P;
+    sub3.dummy <== dummy;
+
+    // λ * (x1 - x3) + P - y
+    component add3 = BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
+    add3.in1 <== mult4.out;
+    add3.in2 <== sub3.out;
+    add3.dummy <== dummy;
+
+    // (λ * (x1 - x3) + P - y) % P ==> y3
+    component mod3 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
+    mod3.base <== add3.out;
+    mod3.modulus <== P;
+    mod3.dummy <== dummy;
+    
+    out[1] <== mod3.mod;
+}
+
+// λ = (y2 - y1) / (x2 - x1)
+// x3 = λ * λ - x1 - x2
+// y3 = λ * (x1 - x3) - y1
+template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+    
+    signal input in1[2][CHUNK_NUMBER];
+    signal input in2[2][CHUNK_NUMBER];
+    signal output out[2][CHUNK_NUMBER];
+    signal input dummy;
+    dummy * dummy === 0;
+    
+    // x2 - x1
+    component sub = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    sub.in1 <== in2[0];
+    sub.in2 <== in1[0];
+    sub.modulus <== P;
+    sub.dummy <== dummy;
+    
+    // y2 - y1
+    component sub2 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    sub2.in1 <== in2[1];
+    sub2.in2 <== in1[1];
+    sub2.modulus <== P;
+    sub2.dummy <== dummy;
+
+    // (x2 - x1) ** -1
+    component modInv = BigModInvOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
+    modInv.in <== sub.out;
+    modInv.modulus <== P;
+    modInv.dummy <== dummy;
+
+    // (y2 - y1) * 1 / (x2 - x1)
+    component mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    mult.in[0] <== sub2.out;
+    mult.in[1] <== modInv.out;
+    mult.dummy <== dummy;
+
+    // (y2 - y1) * 1 / (x2 - x1) % P ==> λ
+    component mod = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
+    mod.base <== mult.out;
+    mod.modulus <== P;
+    mod.dummy <== dummy;
+
+    // λ * λ
+    component mult2 = BigMultOptimisedOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    mult2.in[0] <== mod.mod;
+    mult2.in[1] <== mod.mod;
+    mult2.dummy <== dummy;
+    
+    // P - in1
+    component sub3 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    sub3.in1 <== P;
+    sub3.in2 <== in1[0];
+    sub3.modulus <== P;
+    sub3.dummy <== dummy;
+    
+    // P - in2
+    component sub4 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    sub4.in1 <== P;
+    sub4.in2 <== in2[0];
+    sub4.modulus <== P;
+    sub4.dummy <== dummy;
+
+    // 2 * P - in1 - in2
+    component add = BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    add.in[0] <== sub3.out;
+    add.in[1] <== sub4.out;
+    add.dummy <== dummy;
+
+    // λ * λ + 2 * P - in1 - in2
+    component add2 = BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
+    add2.in1 <== mult2.out;
+    add2.in2 <== add.out;
+    add2.dummy <== dummy;
+
+    // (λ * λ + 2 * P - in1 - in2) % P ==> x3
+    component mod2 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
+    mod2.base <== add2.out;
+    mod2.modulus <== P;
+    mod2.dummy <== dummy;
+
+    out[0] <== mod2.mod;
+
+    // x1 - x3
+    component sub5 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    sub5.in1 <== in1[0];
+    sub5.in2 <== out[0];
+    sub5.modulus <== P;
+    sub5.dummy <== dummy;
+    
+    // λ * (x1 - x3)
+    component mult3 = BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
+    mult3.in1 <== mult.out;
+    mult3.in2 <== sub5.out;
+    mult3.dummy <== dummy;
+
+    // P - y1
+    component sub6 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
+    sub6.in1 <== P;
+    sub6.in2 <== in1[1];
+    sub6.modulus <== P;
+    sub6.dummy <== dummy;
+
+    // λ * (x1 - x3) + P - y1
+    component add3 = BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER);
+    add3.in1 <== mult3.out;
+    add3.in2 <== sub6.out;
+    add3.dummy <== dummy;
+
+    // (λ * (x1 - x3) + P - y1) % p ==> y3
+    component mod3 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
+    mod3.base <== add3.out;
+    mod3.modulus <== P;
+    mod3.dummy <== dummy;
+    
+    out[1] <== mod3.mod;
 }
