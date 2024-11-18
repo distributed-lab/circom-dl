@@ -512,3 +512,23 @@ function long_div2(CHUNK_SIZE, CHUNK_NUMBER, M, A, B){
     out[1][CHUNK_NUMBER] = 0;
     return out;
 }
+
+function reduce_overflow(n, k, m, N){
+    var M[200];
+    var overflow = 0;
+    for (var i = 0; i < k; i++){
+        if (i == 0){
+            M[i] = N[i] % (2 ** n);
+            overflow = N[i] \ (2 ** n);
+        } else {
+            M[i] = (N[i] + overflow) % (2 ** n);
+            overflow = (N[i]+ overflow) \ (2 ** n);
+        }
+    }
+    for (var i = k; i < m; i++){
+        M[i] = overflow % (2 ** n);
+        overflow = overflow \ (2 ** n);
+    }
+
+    return M;
+}

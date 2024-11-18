@@ -227,6 +227,85 @@ template BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS, OVE
     bigMod.div ==> div;
 }
 
+// get mod of number with CHUNK_NUMBER_BASE chunks by modulus with CHUNK_NUMBER_MODULUS chunks
+// optimised of previous, but may be unsecure
+// TODO: research this moment
+template BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS, OVERFLOW_SHIFT){
+    
+    assert(CHUNK_NUMBER_BASE <= 253);
+    assert(CHUNK_NUMBER_MODULUS <= 253);
+    assert(CHUNK_NUMBER_MODULUS <= CHUNK_NUMBER_BASE);
+    
+    signal input base[CHUNK_NUMBER_BASE];
+    signal input modulus[CHUNK_NUMBER_MODULUS];
+    signal input dummy;
+    
+    var CHUNK_NUMBER_DIV = CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS + 1 + OVERFLOW_SHIFT;
+    
+    var reduced[200] = reduce_overflow(CHUNK_SIZE, CHUNK_NUMBER_BASE,CHUNK_NUMBER_BASE + OVERFLOW_SHIFT, base);
+    var based[CHUNK_NUMBER_BASE + 3];
+    
+    for (var i = 0; i < CHUNK_NUMBER_BASE + 3; i++){
+        based[i] = reduced[i];
+    }
+    
+    var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV - 1, based, modulus);
+    
+    signal output div[CHUNK_NUMBER_DIV];
+    signal output mod[CHUNK_NUMBER_MODULUS];
+    
+    for (var i = 0; i < CHUNK_NUMBER_DIV; i++){
+        div[i] <-- long_division[0][i];
+    }
+    
+    for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++){
+        mod[i] <-- long_division[1][i];
+    }
+    
+    component multChecks;
+    if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
+        multChecks = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
+        
+        multChecks.in1 <== div;
+        multChecks.in2 <== modulus;
+        multChecks.dummy <== dummy;
+    } else {
+        multChecks = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
+        
+        multChecks.in2 <== div;
+        multChecks.in1 <== modulus;
+        multChecks.dummy <== dummy;
+    }
+    
+    
+    component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER_MODULUS);
+    
+    greaterThan.in[0] <== modulus;
+    greaterThan.in[1] <== mod;
+    greaterThan.out === 1;
+    
+    //div * modulus + mod === base
+    
+    component bigAddCheck = BigAddNonEqual(CHUNK_SIZE, CHUNK_NUMBER_DIV + CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_MODULUS);
+    
+    bigAddCheck.in1 <== multChecks.out;
+    bigAddCheck.in2 <== mod;
+    bigAddCheck.dummy <== dummy;
+    
+    component smartEqual = SmartEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE + 2 + OVERFLOW_SHIFT);
+    smartEqual.in[0] <== bigAddCheck.out;
+    for (var i = 0; i < CHUNK_NUMBER_BASE; i++){
+        smartEqual.in[1][i] <== base[i];
+    }
+    for (var i = 0; i < 2 + OVERFLOW_SHIFT; i++) {
+        smartEqual.in[1][CHUNK_NUMBER_BASE + i] <== 0;
+    }
+    
+    smartEqual.dummy <== dummy;
+    
+    smartEqual.out === 1;
+}
+
 // calculate mod inverse of base with CHUNK_NUMBER_BASE by CHUNK_NUMBER modulus
 // will fall if modulus[-1] == 0
 template BigModInvOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER) {
