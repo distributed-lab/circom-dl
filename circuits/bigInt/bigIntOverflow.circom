@@ -228,8 +228,24 @@ template BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS, OVE
 }
 
 // get mod of number with CHUNK_NUMBER_BASE chunks by modulus with CHUNK_NUMBER_MODULUS chunks
-// optimised of previous, but may be unsecure
-// TODO: research this moment
+// THIS IS UNSECURE, NEVER USE IT IN PRODUCTION!!!
+// a / b = c;
+// a % b = d;
+// p - circom field
+// first check: 
+// a % p === (b * c + d) % p
+// second check: 
+// a < b * (c + 1)
+// a = bc + d so bc + d < bc + b so d < b
+// Hacking algo:
+// I want to get (d - 1) instead of d
+// Second check will pass
+// a % p === (b * c_1 + d - 1) % p === (b * c + d) % p
+// (b * c) % p === (b * c) % p + b * (c - c1) % p - 1
+// 1 === b * (c - c1) % p
+// (b ** -1) % p === (c - c1) % p
+// c1 = (c + (b ** -1) % p) % p
+// This is unsecure, we can put any value in mod while it is less than modulus
 template BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS, OVERFLOW_SHIFT){
     
     assert(CHUNK_NUMBER_BASE <= 253);
@@ -343,6 +359,50 @@ template BigModInvOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER) {
         mult.out[i] === 0;
     }
 }
+
+// calculate mod inverse of base with CHUNK_NUMBER_BASE by CHUNK_NUMBER modulus
+// THIS IS UNSECURE, NEVER USE IT IN PRODUCTION!!!
+// Calls unsecure method
+template BigModInvOverflow2(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER, OVERFLOW_SHIFT) {
+    assert(CHUNK_SIZE <= 252);
+    signal input in[CHUNK_NUMBER_BASE];
+    signal input modulus[CHUNK_NUMBER];
+    signal output out[CHUNK_NUMBER];
+
+    signal input dummy;
+    dummy * dummy === 0;
+
+    component reduce = RemoveOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_BASE + 1);
+    reduce.in <== in;
+    reduce.dummy <== dummy;
+
+    var div_res[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER, (CHUNK_NUMBER_BASE + 1 - CHUNK_NUMBER), reduce.out, modulus);
+    var mod[CHUNK_NUMBER];
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        mod[i] = div_res[1][i];
+    }
+    var inv[200] = mod_inv(CHUNK_SIZE, CHUNK_NUMBER, mod, modulus);
+
+    for (var i = 0; i < CHUNK_NUMBER; i++) {
+        out[i] <-- inv[i];
+    }
+    
+    component mult = BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER);
+    mult.in1 <== in;
+    mult.in2 <== out;
+    mult.dummy <== dummy;
+
+	component bigMod = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER_BASE + CHUNK_NUMBER - 1, CHUNK_NUMBER, OVERFLOW_SHIFT + 1);
+	bigMod.base <== mult.out;
+	bigMod.modulus <== modulus;
+	bigMod.dummy <== dummy;
+
+    bigMod.mod[0] === 1;
+    for (var i = 1; i < CHUNK_NUMBER; i++) {
+        bigMod.mod[i] === 0;
+    }
+}
+
 
 // multiplying number with CHUNK_NUMBER by scalar, ignoring overflow
 template ScalarMultOverflow(CHUNK_NUMBER){

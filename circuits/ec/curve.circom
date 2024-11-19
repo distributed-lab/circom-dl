@@ -56,7 +56,7 @@ template TangentCheck(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mul2.in2 <== modInv.out;
     mul2.dummy <== dummy;
     
-    component mod = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
+    component mod = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
     mod.base <== mul2.out;
     mod.modulus <== P;
     mod.dummy <== dummy;
@@ -72,7 +72,7 @@ template TangentCheck(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mul3.in2 <== sub.out;
     mul3.dummy <== dummy;
     
-    component mod2 = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
+    component mod2 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
     mod2.base <== mul3.out;
     mod2.modulus <== P;
     mod2.dummy <== dummy;
@@ -153,7 +153,7 @@ template AdditionCheck(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mul2.in2 <== sub3.out;
     mul2.dummy <== dummy;
     
-    component mod = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 2);
+    component mod = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 2);
     mod.base <== mul2.out;
     mod.modulus <== P;
     mod.dummy <== dummy;
@@ -226,12 +226,12 @@ template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     add2.in2 <== B;
     add2.dummy <== dummy;
     
-    component mod = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
+    component mod = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
     mod.base <== mult4.out;
     mod.modulus <== P;
     mod.dummy <== dummy;
     
-    component mod2 = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
+    component mod2 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
     mod2.base <== add2.out;
     mod2.modulus <== P;
     mod2.dummy <== dummy;
@@ -358,7 +358,7 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mult2.dummy <== dummy;
     
     // ((3 * x * x + a) * 1 / (2 * y)) % p ==> λ
-    component mod = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
+    component mod = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
     mod.base <== mult2.out;
     mod.modulus <== P;
     mod.dummy <== dummy;
@@ -388,7 +388,7 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     add2.dummy <== dummy;
     
     // (λ * λ + 2 * P - 2 * x) % p ==> x3
-    component mod2 = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
+    component mod2 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
     mod2.base <== add2.out;
     mod2.modulus <== P;
     mod2.dummy <== dummy;
@@ -422,7 +422,7 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     add3.dummy <== dummy;
 
     // (λ * (x1 - x3) + P - y) % P ==> y3
-    component mod3 = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
+    component mod3 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
     mod3.base <== add3.out;
     mod3.modulus <== P;
     mod3.dummy <== dummy;
@@ -468,7 +468,7 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mult.dummy <== dummy;
 
     // (y2 - y1) * 1 / (x2 - x1) % P ==> λ
-    component mod = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
+    component mod = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
     mod.base <== mult.out;
     mod.modulus <== P;
     mod.dummy <== dummy;
@@ -506,7 +506,7 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     add2.dummy <== dummy;
 
     // (λ * λ + 2 * P - in1 - in2) % P ==> x3
-    component mod2 = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
+    component mod2 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
     mod2.base <== add2.out;
     mod2.modulus <== P;
     mod2.dummy <== dummy;
@@ -540,7 +540,7 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     add3.dummy <== dummy;
 
     // (λ * (x1 - x3) + P - y1) % p ==> y3
-    component mod3 = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
+    component mod3 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
     mod3.base <== add3.out;
     mod3.modulus <== P;
     mod3.dummy <== dummy;
