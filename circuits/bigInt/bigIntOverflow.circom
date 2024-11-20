@@ -403,7 +403,6 @@ template BigModInvOverflow2(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER, OVERFLO
     }
 }
 
-
 // multiplying number with CHUNK_NUMBER by scalar, ignoring overflow
 template ScalarMultOverflow(CHUNK_NUMBER){
     signal input in[CHUNK_NUMBER];

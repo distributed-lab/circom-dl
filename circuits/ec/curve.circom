@@ -321,6 +321,7 @@ template EllipticCurveAddDEPRECATED(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 // λ = (3 * x ** 2 + a) / (2 * y)
 // x3 = λ * λ - 2 * x
 // y3 = λ * (x - x3) - y
+// calculate doubled point
 template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in[2][CHUNK_NUMBER];
     signal output out[2][CHUNK_NUMBER];
@@ -437,28 +438,12 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 // λ = (y2 - y1) / (x2 - x1)
 // x3 = λ * λ - x1 - x2
 // y3 = λ * (x1 - x3) - y1
+// calculate sum of 2 points
 template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     signal input in1[2][CHUNK_NUMBER];
     signal input in2[2][CHUNK_NUMBER];
     signal output out[2][CHUNK_NUMBER];
-    log("=======");
-    for (var i = 0; i < 4; i++){
-        log(in1[0][i]);
-    }
-    log("=");
-        for (var i = 0; i < 4; i++){
-        log(in1[1][i]);
-    }
-    log("=====");
-        for (var i = 0; i < 4; i++){
-        log(in2[0][i]);
-    }
-    log("=");
-        for (var i = 0; i < 4; i++){
-        log(in2[1][i]);
-    }
-    log("=======");
     signal input dummy;
     dummy * dummy === 0;
     
@@ -569,6 +554,12 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     out[1] <== mod3.mod;
 }
 
+// calculate G * scalar
+// Will fail if last 8 bits are zeros
+// Will be fixed later
+// Now works for secp256k1 only
+// To make it work for other curve u should generate generator pow table
+// Other curves will be added by ourself soon
 template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
@@ -661,17 +652,29 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
     
     component adders[parts - 1];
     component isDummy[parts - 1];
+    component isDummyLeft;
+
     
-    signal resultingPoints[parts][2][CHUNK_SIZE];
-    
+    signal resultingPoints[parts][2][CHUNK_NUMBER];
+    signal firstResult[2][CHUNK_NUMBER];
+
     for (var i = 0; i < parts - 1; i++){
         adders[i] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
         isDummy[i] = IsEqual();
+        isDummyLeft = IsEqual();
+        isDummyLeft.in[0] = 10590052641807177607;
         isDummy[i].in[0] <== 10590052641807177607;
         
         if (i == 0){
+            isDummyLeft.in[1] <== additionPoints[i];
             adders[i].in1 <== additionPoints[i];
-            adders[i].in2 <== additionPoints[i + 1];
+            for (var j = 0; j < CHUNK_NUMBER - 1; j++){
+                adders[i].in2[0][j] <== additionPoints[i + 1][0][j];
+                adders[i].in2[1][j] <== additionPoints[i + 1][1][j];
+            }
+            adders[i].in1[0][CHUNK_NUMBER - 1] <== additionPoints[i + 1][0][CHUNK_NUMBER - 1] + isDummyLeft.out * isDummyLeft.out;
+            adders[i].in1[1][CHUNK_NUMBER - 1] <== additionPoints[i + 1][1][CHUNK_NUMBER - 1] + isDummyLeft.out * isDummyLeft.out;
+
             adders[i].dummy <== dummy;
             isDummy[i].in[1] <== additionPoints[i + 1][0][0];
             
@@ -681,6 +684,8 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
             for (var j = 0; j < CHUNK_NUMBER; j++){
                 resultingPoints[i][1][j] <== isDummy[i].out * additionPoints[i][1][j];
             }
+
+
         } else {
             for (var j = 0; j < CHUNK_NUMBER; j++){
                 adders[i].in1[0][j] <== resultingPoints[i - 1][0][j] + (1 - isDummy[i - 1].out) * adders[i - 1].out[0][j];
@@ -691,7 +696,6 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
             adders[i].in2 <== additionPoints[i + 1];
             adders[i].dummy <== dummy;
             isDummy[i].in[1] <== adders[i].in2[0][0];
-            log(i, isDummy[i].out);
             for (var j = 0; j < CHUNK_NUMBER; j++){
                 resultingPoints[i][0][j] <== isDummy[i].out * adders[i].in1[0][j];
             }
@@ -704,13 +708,234 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
     for (var j = 0; j < CHUNK_NUMBER; j++){
         resultingPoints[parts - 1][0][j] <== isDummy[parts - 2].out * additionPoints[parts - 1][0][j];
         out[0][j] <== resultingPoints[parts - 1][0][j] + (1 - isDummy[parts - 2].out) * adders[parts - 2].out[0][j];
-        log(out[0][j]);
     }
     for (var j = 0; j < CHUNK_NUMBER; j++){
         resultingPoints[parts - 1][1][j] <== isDummy[parts - 2].out * additionPoints[parts - 1][1][j];
         out[1][j] <== resultingPoints[parts - 1][1][j] + (1 - isDummy[parts - 2].out) * adders[parts - 2].out[1][j];
-        log(out[1][j]);
     }
     
     
+}
+
+// Precomputes for pipinger optimised multiplication
+// Computes 0 * G, 1 * G, 2 * G, ... (2 ** WINDOW_SIZE - 1) * G
+template PrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE){
+    signal input in[2][CHUNK_NUMBER];
+    signal input dummy;
+
+    var PRECOMPUTE_NUMBER = 2 ** WINDOW_SIZE; 
+
+    signal output out[PRECOMPUTE_NUMBER][2][CHUNK_NUMBER];
+    dummy * dummy === 0;
+    
+    for (var i = 0; i < 2; i++){
+        for (var j = 0; j < CHUNK_NUMBER; j++){
+            out[0][i][j] <== 0;
+        }
+    }
+
+    out[1] <== in;
+
+    component doublers[PRECOMPUTE_NUMBER\2 - 1];
+    component adders  [PRECOMPUTE_NUMBER\2 - 1];
+
+    for (var i = 2; i < PRECOMPUTE_NUMBER; i++){
+        if (i % 2 == 0){
+            doublers[i\2 - 1]     = EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+            doublers[i\2 - 1].in  <== out[i\2];
+            doublers[i\2 - 1].dummy <== dummy;
+            doublers[i\2 - 1].out ==> out[i];
+
+        }
+        else
+        {
+            adders[i\2 - 1]          = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+            adders[i\2 - 1].in1   <== out[1];
+            adders[i\2 - 1].in2   <== out[i - 1];
+            adders[i\2 - 1].dummy <== dummy;
+            adders[i\2 - 1].out      ==> out[i]; 
+        }
+    }
+}
+
+// Get generator by curve params
+// Now there is only secp256k1 generator (64 4 chunking)
+// Other curves / chunking will be added later
+template EllipticCurveGetGenerator(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+    signal output gen[2][CHUNK_NUMBER];
+    gen[0] <== [6481385041966929816, 188021827762530521, 6170039885052185351, 8772561819708210092];
+    gen[1] <== [11261198710074299576, 18237243440184513561, 6747795201694173352, 5204712524664259685];
+}
+
+// Optimised scalar point multiplication, use it if u can`t add precompute table
+// Algo:
+// Precompute (see "PrecomputePipinger" template)
+// Convert each WINDOW_SIZE bits into num IDX, double WINDOW_SIZE times, add to result IDX * G (from precomputes), repeat
+// Double add and algo complexity:
+// 255 doubles + 256 adds
+// Our algo complexity:
+// 256 - WINDOW_SIZE doubles, 256 / WINDOW_SIZE adds, 2 ** WINDOW_SIZE - 2 adds and doubles for precompute
+// for 256 curve best WINDOW_SIZE with 14 + 256 - 4 + 64 operations with points
+template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE){
+
+    assert(WINDOW_SIZE == 4);
+
+    signal input in[2][CHUNK_NUMBER];
+    signal input scalar[CHUNK_NUMBER];
+    signal input dummy;
+
+    signal output out[2][CHUNK_NUMBER];
+
+    var PRECOMPUTE_NUMBER = 2 ** WINDOW_SIZE;
+
+    signal precomputed[PRECOMPUTE_NUMBER][2][CHUNK_NUMBER];
+
+    component precompute = PrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE);
+    precompute.in  <== in;
+    precompute.dummy <== dummy;
+    precompute.out ==> precomputed;
+
+    var DOUBLERS_NUMBER = CHUNK_SIZE*CHUNK_NUMBER - WINDOW_SIZE;
+    var ADDERS_NUMBER   = CHUNK_SIZE*CHUNK_NUMBER \ WINDOW_SIZE; //80
+
+    component doublers[DOUBLERS_NUMBER];
+    component adders  [ADDERS_NUMBER];
+    component bits2Num[ADDERS_NUMBER];
+    component num2Bits[CHUNK_NUMBER];
+
+    signal res [ADDERS_NUMBER + 1][2][CHUNK_NUMBER];
+
+    signal tmp [ADDERS_NUMBER][PRECOMPUTE_NUMBER][2][CHUNK_NUMBER];
+
+    signal tmp2[ADDERS_NUMBER]    [2]   [CHUNK_NUMBER];
+    signal tmp3[ADDERS_NUMBER]    [2][2][CHUNK_NUMBER];
+    signal tmp4[ADDERS_NUMBER]    [2]   [CHUNK_NUMBER];
+    signal tmp5[ADDERS_NUMBER]    [2][2][CHUNK_NUMBER];
+    signal tmp6[ADDERS_NUMBER - 1][2][2][CHUNK_NUMBER];
+    signal tmp7[ADDERS_NUMBER - 1][2]   [CHUNK_NUMBER]; //79
+    
+    component equals    [ADDERS_NUMBER][PRECOMPUTE_NUMBER][2][CHUNK_NUMBER];
+    component zeroEquals[ADDERS_NUMBER];
+    component tmpEquals [ADDERS_NUMBER];
+
+    component g = EllipticCurveGetGenerator(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+    signal gen[2][CHUNK_NUMBER];
+    gen <== g.gen;
+
+    signal scalarBits[CHUNK_NUMBER*CHUNK_SIZE];
+
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        num2Bits[i] = Num2Bits(CHUNK_SIZE);
+        num2Bits[i].in <== scalar[i];
+       
+        for (var j = 0; j < CHUNK_SIZE; j++){
+            scalarBits[CHUNK_NUMBER*CHUNK_SIZE - CHUNK_SIZE * (i + 1) + j] <== num2Bits[i].out[CHUNK_SIZE - 1 - j];
+        }
+    }
+
+    res[0] <== precomputed[0];
+
+    for (var i = 0; i < CHUNK_NUMBER*CHUNK_SIZE; i += WINDOW_SIZE){
+        adders[i\WINDOW_SIZE] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        bits2Num[i\WINDOW_SIZE] = Bits2Num(WINDOW_SIZE);
+        for (var j = 0; j < WINDOW_SIZE; j++){
+            bits2Num[i\WINDOW_SIZE].in[j] <== scalarBits[i + (WINDOW_SIZE - 1) - j];
+        }
+
+        tmpEquals[i\WINDOW_SIZE] = IsEqual();
+        tmpEquals[i\WINDOW_SIZE].in[0] <== 0;
+        tmpEquals[i\WINDOW_SIZE].in[1] <== res[i\WINDOW_SIZE][0][0];
+
+        if (i != 0){
+            for (var j = 0; j < WINDOW_SIZE; j++){
+                doublers[i + j - WINDOW_SIZE] = EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+                doublers[i + j - WINDOW_SIZE].dummy <== dummy;
+
+                if (j == 0){
+                    for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+                        for (var coor_idx = 0; coor_idx < CHUNK_NUMBER; coor_idx ++){
+                            tmp6[i\WINDOW_SIZE - 1][0][axis_idx][coor_idx] <==      tmpEquals[i\WINDOW_SIZE].out  * gen[axis_idx][coor_idx];
+                            tmp6[i\WINDOW_SIZE - 1][1][axis_idx][coor_idx] <== (1 - tmpEquals[i\WINDOW_SIZE].out) * res[i\WINDOW_SIZE][axis_idx][coor_idx];
+                            tmp7[i\WINDOW_SIZE - 1]   [axis_idx][coor_idx] <== tmp6[i\WINDOW_SIZE - 1][0][axis_idx][coor_idx] 
+                                                                             + tmp6[i\WINDOW_SIZE - 1][1][axis_idx][coor_idx];
+                        }
+                    }
+
+                    doublers[i + j - WINDOW_SIZE].in <== tmp7[i\WINDOW_SIZE - 1];
+                }
+                else
+                {
+                    doublers[i + j - WINDOW_SIZE].in <== doublers[i + j - 1 - WINDOW_SIZE].out;
+                }
+            }
+        }
+
+       for (var point_idx = 0; point_idx < PRECOMPUTE_NUMBER; point_idx++){
+            for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+                for (var coor_idx = 0; coor_idx < CHUNK_NUMBER; coor_idx++){
+                    equals[i\WINDOW_SIZE][point_idx][axis_idx][coor_idx]       = IsEqual();
+                    equals[i\WINDOW_SIZE][point_idx][axis_idx][coor_idx].in[0] <== point_idx;
+                    equals[i\WINDOW_SIZE][point_idx][axis_idx][coor_idx].in[1] <== bits2Num[i\WINDOW_SIZE].out;
+                    tmp   [i\WINDOW_SIZE][point_idx][axis_idx][coor_idx]       <== precomputed[point_idx][axis_idx][coor_idx] * 
+                                                                         equals[i\WINDOW_SIZE][point_idx][axis_idx][coor_idx].out;
+                }
+            }
+        }
+
+        for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+            for (var coor_idx = 0; coor_idx < CHUNK_NUMBER; coor_idx++){
+                tmp2[i\WINDOW_SIZE]   [axis_idx][coor_idx] <== 
+                tmp[i\WINDOW_SIZE][0] [axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][1] [axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][2] [axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][3] [axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][4] [axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][5] [axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][6] [axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][7] [axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][8] [axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][9] [axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][10][axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][11][axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][12][axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][13][axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][14][axis_idx][coor_idx] + 
+                tmp[i\WINDOW_SIZE][15][axis_idx][coor_idx];
+            }
+        }
+
+        if (i == 0){
+
+            adders[i\WINDOW_SIZE].in1 <== res [i\WINDOW_SIZE];
+            adders[i\WINDOW_SIZE].in2 <== tmp2[i\WINDOW_SIZE];
+            adders[i\WINDOW_SIZE].dummy <== dummy;
+            res[i\WINDOW_SIZE + 1]     <== tmp2[i\WINDOW_SIZE];
+
+        } else {
+
+            adders[i\WINDOW_SIZE].in1 <== doublers[i - 1].out;
+            adders[i\WINDOW_SIZE].in2 <== tmp2[i\WINDOW_SIZE];
+            adders[i\WINDOW_SIZE].dummy <== dummy;
+
+            zeroEquals[i\WINDOW_SIZE] = IsEqual();
+
+            zeroEquals[i\WINDOW_SIZE].in[0]<== 0;
+            zeroEquals[i\WINDOW_SIZE].in[1]<== tmp2[i\WINDOW_SIZE][0][0];
+
+            for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+                for(var coor_idx = 0; coor_idx < CHUNK_NUMBER; coor_idx++){
+
+                    tmp3[i\WINDOW_SIZE][0][axis_idx][coor_idx] <== adders    [i\WINDOW_SIZE].out[axis_idx][coor_idx] * (1 - zeroEquals[i\WINDOW_SIZE].out);
+                    tmp3[i\WINDOW_SIZE][1][axis_idx][coor_idx] <== zeroEquals[i\WINDOW_SIZE].out                     * doublers[i-1].out[axis_idx][coor_idx];
+                    tmp4[i\WINDOW_SIZE]   [axis_idx][coor_idx] <== tmp3[i\WINDOW_SIZE][0][axis_idx][coor_idx]        + tmp3[i\WINDOW_SIZE][1][axis_idx][coor_idx]; 
+                    tmp5[i\WINDOW_SIZE][0][axis_idx][coor_idx] <== (1 - tmpEquals[i\WINDOW_SIZE].out)                * tmp4[i\WINDOW_SIZE]   [axis_idx][coor_idx];
+                    tmp5[i\WINDOW_SIZE][1][axis_idx][coor_idx] <== tmpEquals[i\WINDOW_SIZE].out                      * tmp2[i\WINDOW_SIZE]   [axis_idx][coor_idx];
+                                    
+                    res[i\WINDOW_SIZE + 1][axis_idx][coor_idx] <== tmp5[i\WINDOW_SIZE][0][axis_idx][coor_idx]        + tmp5[i\WINDOW_SIZE][1][axis_idx][coor_idx];                                 
+                }
+            }        
+        }
+    }
+
+    out <== res[ADDERS_NUMBER];
 }
