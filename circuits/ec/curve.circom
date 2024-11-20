@@ -630,15 +630,15 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
     }
     
     signal precomptedDummy[parts][2][CHUNK_NUMBER];
+
+    component getDummy = EllipticCurveGetDummy(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+
     for (var part_idx = 0; part_idx < parts; part_idx++){
-        precomptedDummy[part_idx][0][0] <== isZero[part_idx].out * 10590052641807177607;
-        precomptedDummy[part_idx][0][1] <== isZero[part_idx].out * 9925333800925632128;
-        precomptedDummy[part_idx][0][2] <== isZero[part_idx].out * 8387557479920400525;
-        precomptedDummy[part_idx][0][3] <== isZero[part_idx].out * 15939969690812260448;
-        precomptedDummy[part_idx][1][0] <== isZero[part_idx].out * 4032565550822761843;
-        precomptedDummy[part_idx][1][1] <== isZero[part_idx].out * 10670260723290159449;
-        precomptedDummy[part_idx][1][2] <== isZero[part_idx].out * 7050988852899951050;
-        precomptedDummy[part_idx][1][3] <== isZero[part_idx].out * 8797939803687366868;
+        for (var i = 0; i < 2; i++){
+            for (var j = 0; j < CHUNK_NUMBER; j++){
+                precomptedDummy[part_idx][i][j] <== isZero[part_idx].out * getDummy.dummyPoint[i][j];
+            }
+        }
     }
     
     signal additionPoints[parts][2][CHUNK_NUMBER];
@@ -652,8 +652,6 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
     
     component adders[parts - 1];
     component isDummy[parts - 1];
-    component isDummyLeft;
-
     
     signal resultingPoints[parts][2][CHUNK_NUMBER];
     signal firstResult[2][CHUNK_NUMBER];
@@ -661,20 +659,13 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
     for (var i = 0; i < parts - 1; i++){
         adders[i] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
         isDummy[i] = IsEqual();
-        isDummyLeft = IsEqual();
-        isDummyLeft.in[0] = 10590052641807177607;
+
         isDummy[i].in[0] <== 10590052641807177607;
         
         if (i == 0){
-            isDummyLeft.in[1] <== additionPoints[i];
+          
             adders[i].in1 <== additionPoints[i];
-            for (var j = 0; j < CHUNK_NUMBER - 1; j++){
-                adders[i].in2[0][j] <== additionPoints[i + 1][0][j];
-                adders[i].in2[1][j] <== additionPoints[i + 1][1][j];
-            }
-            adders[i].in1[0][CHUNK_NUMBER - 1] <== additionPoints[i + 1][0][CHUNK_NUMBER - 1] + isDummyLeft.out * isDummyLeft.out;
-            adders[i].in1[1][CHUNK_NUMBER - 1] <== additionPoints[i + 1][1][CHUNK_NUMBER - 1] + isDummyLeft.out * isDummyLeft.out;
-
+            adders[i].in2 <== additionPoints[i + 1];
             adders[i].dummy <== dummy;
             isDummy[i].in[1] <== additionPoints[i + 1][0][0];
             
@@ -684,8 +675,6 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
             for (var j = 0; j < CHUNK_NUMBER; j++){
                 resultingPoints[i][1][j] <== isDummy[i].out * additionPoints[i][1][j];
             }
-
-
         } else {
             for (var j = 0; j < CHUNK_NUMBER; j++){
                 adders[i].in1[0][j] <== resultingPoints[i - 1][0][j] + (1 - isDummy[i - 1].out) * adders[i - 1].out[0][j];
@@ -708,13 +697,13 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
     for (var j = 0; j < CHUNK_NUMBER; j++){
         resultingPoints[parts - 1][0][j] <== isDummy[parts - 2].out * additionPoints[parts - 1][0][j];
         out[0][j] <== resultingPoints[parts - 1][0][j] + (1 - isDummy[parts - 2].out) * adders[parts - 2].out[0][j];
+        log(out[0][j]);
     }
     for (var j = 0; j < CHUNK_NUMBER; j++){
         resultingPoints[parts - 1][1][j] <== isDummy[parts - 2].out * additionPoints[parts - 1][1][j];
         out[1][j] <== resultingPoints[parts - 1][1][j] + (1 - isDummy[parts - 2].out) * adders[parts - 2].out[1][j];
+        log(out[1][j]);
     }
-    
-    
 }
 
 // Precomputes for pipinger optimised multiplication
@@ -765,6 +754,26 @@ template EllipticCurveGetGenerator(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal output gen[2][CHUNK_NUMBER];
     gen[0] <== [6481385041966929816, 188021827762530521, 6170039885052185351, 8772561819708210092];
     gen[1] <== [11261198710074299576, 18237243440184513561, 6747795201694173352, 5204712524664259685];
+}
+
+// Get "dummy" point
+// We can`t if signal in circom, so we always need to do all opertions, even we won`t use results of them
+// For example, in scalar mult we can have case where we shouln`t add anything (bits = [0,0, .. ,0])
+// We will ignore result, but we still should get it, so we need to pout something anyway
+// We use this dummy point for such purposes
+// Dummy point = G * 2**256
+template EllipticCurveGetDummy(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+
+    signal output dummyPoint[2][CHUNK_SIZE];
+
+    dummyPoint[0][0] <== 10590052641807177607;
+    dummyPoint[0][1] <== 9925333800925632128;
+    dummyPoint[0][2] <== 8387557479920400525;
+    dummyPoint[0][3] <== 15939969690812260448;
+    dummyPoint[1][0] <== 4032565550822761843;
+    dummyPoint[1][1] <== 10670260723290159449;
+    dummyPoint[1][2] <== 7050988852899951050;
+    dummyPoint[1][3] <== 8797939803687366868;
 }
 
 // Optimised scalar point multiplication, use it if u can`t add precompute table
