@@ -2,6 +2,10 @@ pragma circom  2.1.6;
 
 include "../bigInt/bigIntOverflow.circom";
 include "../bigInt/bigIntFunc.circom";
+include "./secp256k1pows.circom";
+include "../bitify/bitify.circom";
+include "../bitify/comparators.circom";
+include "../int/arithmetic.circom";
 
 // Operation for any Weierstrass prime-field eliptic curve (for now 256-bit)
 // A, B, P in every function - params of needed curve, chunked the same as every other chunking (64 4 for now)
@@ -292,13 +296,13 @@ template EllipticCurveAddDEPRECATED(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     var DY[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, in2[1], in1[1], P);
     var DX[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, in2[0], in1[0], P);
-
+    
     var DX_INV[200] = mod_inv(CHUNK_SIZE, CHUNK_NUMBER, DX, P);
     var LAMBDA[200] = prod_mod(CHUNK_SIZE, CHUNK_NUMBER, DY, DX_INV, P);
-
+    
     var LAMBDA_SQ[200] = prod_mod(CHUNK_SIZE, CHUNK_NUMBER, LAMBDA, LAMBDA, P);
-
-
+    
+    
     var X3[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, LAMBDA_SQ, in1[0], P), in2[0], P);
     var Y3[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, prod_mod(CHUNK_SIZE, CHUNK_NUMBER, LAMBDA, long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, in1[0], X3, P), P), in1[1], P);
     
@@ -311,7 +315,7 @@ template EllipticCurveAddDEPRECATED(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     additionCheck.in1 <== in1;
     additionCheck.in2 <== in2;
     additionCheck.in3 <== out;
-    additionCheck.dummy <== dummy;  
+    additionCheck.dummy <== dummy;
 }
 
 // λ = (3 * x ** 2 + a) / (2 * y)
@@ -322,7 +326,7 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal output out[2][CHUNK_NUMBER];
     signal input dummy;
     dummy * dummy === 0;
-
+    
     // x * x
     component mult = BigMultOptimisedOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     mult.in[0] <== in[0];
@@ -375,12 +379,12 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     sub.in2 <== in[0];
     sub.modulus <== P;
     sub.dummy <== dummy;
-
+    
     // 2 * P - 2 * x
     component scalarMult3 = ScalarMultOverflow(CHUNK_NUMBER);
     scalarMult3.in <== sub.out;
     scalarMult3.scalar <== 2;
-
+    
     // λ * λ + 2 * P - 2 * x
     component add2 = BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
     add2.in1 <== mult3.out;
@@ -394,7 +398,7 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mod2.dummy <== dummy;
     
     out[0] <== mod2.mod;
-
+    
     // x1 - x3
     component sub2 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     sub2.in1 <== in[0];
@@ -407,20 +411,20 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mult4.in1 <== mod.mod;
     mult4.in2 <== sub2.out;
     mult4.dummy <== dummy;
-
+    
     // P - y
     component sub3 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     sub3.in1 <== P;
     sub3.in2 <== in[1];
     sub3.modulus <== P;
     sub3.dummy <== dummy;
-
+    
     // λ * (x1 - x3) + P - y
     component add3 = BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
     add3.in1 <== mult4.out;
     add3.in2 <== sub3.out;
     add3.dummy <== dummy;
-
+    
     // (λ * (x1 - x3) + P - y) % P ==> y3
     component mod3 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
     mod3.base <== add3.out;
@@ -438,6 +442,23 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in1[2][CHUNK_NUMBER];
     signal input in2[2][CHUNK_NUMBER];
     signal output out[2][CHUNK_NUMBER];
+    log("=======");
+    for (var i = 0; i < 4; i++){
+        log(in1[0][i]);
+    }
+    log("=");
+        for (var i = 0; i < 4; i++){
+        log(in1[1][i]);
+    }
+    log("=====");
+        for (var i = 0; i < 4; i++){
+        log(in2[0][i]);
+    }
+    log("=");
+        for (var i = 0; i < 4; i++){
+        log(in2[1][i]);
+    }
+    log("=======");
     signal input dummy;
     dummy * dummy === 0;
     
@@ -454,25 +475,25 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     sub2.in2 <== in1[1];
     sub2.modulus <== P;
     sub2.dummy <== dummy;
-
+    
     // (x2 - x1) ** -1
     component modInv = BigModInvOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     modInv.in <== sub.out;
     modInv.modulus <== P;
     modInv.dummy <== dummy;
-
+    
     // (y2 - y1) * 1 / (x2 - x1)
     component mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     mult.in[0] <== sub2.out;
     mult.in[1] <== modInv.out;
     mult.dummy <== dummy;
-
+    
     // (y2 - y1) * 1 / (x2 - x1) % P ==> λ
     component mod = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
     mod.base <== mult.out;
     mod.modulus <== P;
     mod.dummy <== dummy;
-
+    
     // λ * λ
     component mult2 = BigMultOptimisedOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     mult2.in[0] <== mod.mod;
@@ -492,27 +513,27 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     sub4.in2 <== in2[0];
     sub4.modulus <== P;
     sub4.dummy <== dummy;
-
+    
     // 2 * P - in1 - in2
     component add = BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     add.in[0] <== sub3.out;
     add.in[1] <== sub4.out;
     add.dummy <== dummy;
-
+    
     // λ * λ + 2 * P - in1 - in2
     component add2 = BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
     add2.in1 <== mult2.out;
     add2.in2 <== add.out;
     add2.dummy <== dummy;
-
+    
     // (λ * λ + 2 * P - in1 - in2) % P ==> x3
     component mod2 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER, 2);
     mod2.base <== add2.out;
     mod2.modulus <== P;
     mod2.dummy <== dummy;
-
+    
     out[0] <== mod2.mod;
-
+    
     // x1 - x3
     component sub5 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     sub5.in1 <== in1[0];
@@ -525,25 +546,171 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mult3.in1 <== mult.out;
     mult3.in2 <== sub5.out;
     mult3.dummy <== dummy;
-
+    
     // P - y1
     component sub6 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     sub6.in1 <== P;
     sub6.in2 <== in1[1];
     sub6.modulus <== P;
     sub6.dummy <== dummy;
-
+    
     // λ * (x1 - x3) + P - y1
     component add3 = BigAddNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER);
     add3.in1 <== mult3.out;
     add3.in2 <== sub6.out;
     add3.dummy <== dummy;
-
-    // (λ * (x1 - x3) + P - y1) % p ==> y3
+    
+    // (λ * (x1 - x3) + P - y1) % P ==> y3
     component mod3 = BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER, 3);
     mod3.base <== add3.out;
     mod3.modulus <== P;
     mod3.dummy <== dummy;
     
     out[1] <== mod3.mod;
+}
+
+template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+    
+    assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
+    
+    signal input scalar[CHUNK_NUMBER];
+    signal input dummy;
+    
+    signal output out[2][CHUNK_NUMBER];
+    
+    var STRIDE = 8;
+    
+    var parts = CHUNK_NUMBER * CHUNK_SIZE \ STRIDE;
+    
+    dummy * dummy === 0;
+    
+    var powers[parts][2 ** STRIDE][2][CHUNK_NUMBER] = get_g_pow_stride8_table(CHUNK_SIZE, CHUNK_NUMBER);
+    
+    component num2bits[CHUNK_NUMBER];
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        num2bits[i] = Num2Bits(CHUNK_SIZE);
+        num2bits[i].in <== scalar[i];
+    }
+    component bits2num[parts];
+    for (var i = 0; i < parts; i++){
+        bits2num[i] = Bits2Num(STRIDE);
+        for (var j = 0; j < STRIDE; j++){
+            bits2num[i].in[j] <== num2bits[(i * STRIDE + j) \ CHUNK_SIZE].out[(i * STRIDE + j) % CHUNK_SIZE];
+        }
+    }
+    
+    component equal[parts][2 ** STRIDE];
+    signal resultCoordinateComputation[parts][2 ** STRIDE][2][CHUNK_NUMBER];
+    for (var i = 0; i < parts; i++){
+        for (var j = 0; j < 2 ** STRIDE; j++){
+            equal[i][j] = IsEqual();
+            equal[i][j].in[0] <== j;
+            equal[i][j].in[1] <== bits2num[i].out;
+            
+            
+            for (var axis_idx = 0; axis_idx < CHUNK_NUMBER; axis_idx++){
+                resultCoordinateComputation[i][j][0][axis_idx] <== equal[i][j].out * powers[i][j][0][axis_idx];
+            }
+            for (var axis_idx = 0; axis_idx < CHUNK_NUMBER; axis_idx++){
+                resultCoordinateComputation[i][j][1][axis_idx] <== equal[i][j].out * powers[i][j][1][axis_idx];
+            }
+            
+            
+        }
+    }
+    
+    component getSumOfNElements[parts][2][CHUNK_NUMBER];
+    for (var i = 0; i < parts; i++){
+        for (var j = 0; j < 2; j++){
+            for (var axis_idx = 0; axis_idx < CHUNK_NUMBER; axis_idx++){
+                getSumOfNElements[i][j][axis_idx] = GetSumOfNElements(2 ** STRIDE);
+                getSumOfNElements[i][j][axis_idx].dummy <== dummy;
+                for (var stride_idx = 0; stride_idx < 2 ** STRIDE; stride_idx++){
+                    getSumOfNElements[i][j][axis_idx].in[stride_idx] <== resultCoordinateComputation[i][stride_idx][j][axis_idx];
+                }
+            }
+        }
+    }
+    
+    component isZero[parts];
+    for (var i = 0; i < parts; i++){
+        isZero[i] = IsZero();
+        isZero[i].in <== getSumOfNElements[i][0][0].out + getSumOfNElements[i][0][1].out + getSumOfNElements[i][0][2].out + getSumOfNElements[i][0][3].out + getSumOfNElements[i][1][0].out + getSumOfNElements[i][1][1].out + getSumOfNElements[i][1][2].out + getSumOfNElements[i][1][3].out + dummy * dummy;
+    }
+    
+    signal precomptedDummy[parts][2][CHUNK_NUMBER];
+    for (var part_idx = 0; part_idx < parts; part_idx++){
+        precomptedDummy[part_idx][0][0] <== isZero[part_idx].out * 10590052641807177607;
+        precomptedDummy[part_idx][0][1] <== isZero[part_idx].out * 9925333800925632128;
+        precomptedDummy[part_idx][0][2] <== isZero[part_idx].out * 8387557479920400525;
+        precomptedDummy[part_idx][0][3] <== isZero[part_idx].out * 15939969690812260448;
+        precomptedDummy[part_idx][1][0] <== isZero[part_idx].out * 4032565550822761843;
+        precomptedDummy[part_idx][1][1] <== isZero[part_idx].out * 10670260723290159449;
+        precomptedDummy[part_idx][1][2] <== isZero[part_idx].out * 7050988852899951050;
+        precomptedDummy[part_idx][1][3] <== isZero[part_idx].out * 8797939803687366868;
+    }
+    
+    signal additionPoints[parts][2][CHUNK_NUMBER];
+    for (var part_idx = 0; part_idx < parts; part_idx++){
+        for (var i = 0; i < 2; i++){
+            for (var j = 0; j < CHUNK_NUMBER; j++){
+                additionPoints[part_idx][i][j] <== (1 - isZero[part_idx].out) * getSumOfNElements[part_idx][i][j].out + precomptedDummy[part_idx][i][j];
+            }
+        }
+    }
+    
+    component adders[parts - 1];
+    component isDummy[parts - 1];
+    
+    signal resultingPoints[parts][2][CHUNK_SIZE];
+    
+    for (var i = 0; i < parts - 1; i++){
+        adders[i] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        isDummy[i] = IsEqual();
+        isDummy[i].in[0] <== 10590052641807177607;
+        
+        if (i == 0){
+            adders[i].in1 <== additionPoints[i];
+            adders[i].in2 <== additionPoints[i + 1];
+            adders[i].dummy <== dummy;
+            isDummy[i].in[1] <== additionPoints[i + 1][0][0];
+            
+            for (var j = 0; j < CHUNK_NUMBER; j++){
+                resultingPoints[i][0][j] <== isDummy[i].out * additionPoints[i][0][j];
+            }
+            for (var j = 0; j < CHUNK_NUMBER; j++){
+                resultingPoints[i][1][j] <== isDummy[i].out * additionPoints[i][1][j];
+            }
+        } else {
+            for (var j = 0; j < CHUNK_NUMBER; j++){
+                adders[i].in1[0][j] <== resultingPoints[i - 1][0][j] + (1 - isDummy[i - 1].out) * adders[i - 1].out[0][j];
+            }
+            for (var j = 0; j < CHUNK_NUMBER; j++){
+                adders[i].in1[1][j] <== resultingPoints[i - 1][1][j] + (1 - isDummy[i - 1].out) * adders[i - 1].out[1][j];
+            }
+            adders[i].in2 <== additionPoints[i + 1];
+            adders[i].dummy <== dummy;
+            isDummy[i].in[1] <== adders[i].in2[0][0];
+            log(i, isDummy[i].out);
+            for (var j = 0; j < CHUNK_NUMBER; j++){
+                resultingPoints[i][0][j] <== isDummy[i].out * adders[i].in1[0][j];
+            }
+            for (var j = 0; j < CHUNK_NUMBER; j++){
+                resultingPoints[i][1][j] <== isDummy[i].out * adders[i].in1[1][j];
+            }
+        }
+    }
+    
+    for (var j = 0; j < CHUNK_NUMBER; j++){
+        resultingPoints[parts - 1][0][j] <== isDummy[parts - 2].out * additionPoints[parts - 1][0][j];
+        out[0][j] <== resultingPoints[parts - 1][0][j] + (1 - isDummy[parts - 2].out) * adders[parts - 2].out[0][j];
+        log(out[0][j]);
+    }
+    for (var j = 0; j < CHUNK_NUMBER; j++){
+        resultingPoints[parts - 1][1][j] <== isDummy[parts - 2].out * additionPoints[parts - 1][1][j];
+        out[1][j] <== resultingPoints[parts - 1][1][j] + (1 - isDummy[parts - 2].out) * adders[parts - 2].out[1][j];
+        log(out[1][j]);
+    }
+    
+    
 }
