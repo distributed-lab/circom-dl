@@ -671,7 +671,7 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
             // 0 0 -> adders
             // 0 1 -> left
             // 1 0 -> right
-            // 1 1 -> rigth
+            // 1 1 -> right
             for (var axis_idx = 0; axis_idx < 2; axis_idx++){
                 for (var j = 0; j < CHUNK_NUMBER; j++){
                     
@@ -697,7 +697,7 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
             // 0 0 -> adders
             // 0 1 -> left
             // 1 0 -> right
-            // 1 1 -> rigth
+            // 1 1 -> right
             for (var axis_idx = 0; axis_idx < 2; axis_idx++){
                 for (var j = 0; j < CHUNK_NUMBER; j++){
                     
@@ -1034,7 +1034,7 @@ template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A,
             // 0 0 -> adders
             // 0 1 -> left
             // 1 0 -> right
-            // 1 1 -> rigth
+            // 1 1 -> right
             for (var axis_idx = 0; axis_idx < 2; axis_idx++){
                 for (var j = 0; j < CHUNK_NUMBER; j++){
                     
@@ -1060,7 +1060,7 @@ template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A,
             // 0 0 -> adders
             // 0 1 -> left
             // 1 0 -> right
-            // 1 1 -> rigth
+            // 1 1 -> right
             for (var axis_idx = 0; axis_idx < 2; axis_idx++){
                 for (var j = 0; j < CHUNK_NUMBER; j++){
                     
