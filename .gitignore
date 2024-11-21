@@ -16,3 +16,4 @@ input*.json
 tmp.circom
 tmp.txt
 bigIntPredefined.circom
+.DS_STORE

@@ -16,7 +16,7 @@ include "./get.circom";
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // To add a new curve u should do next steps:
 // Get curve params(A, B, P) in chunked representation
-// Add new if for generator and dummy point to ./"get.circom" for your params with same chunking (use 64 4 for now)
+// Add new if for generator, order and dummy point to ./"get.circom" for your params with same chunking (use 64 4 for now)
 // Change params at 4..8 lines in "../../helpers/generate_pow_table_for_curve.py" for your curve params, then execute script
 // It will create circom file, rename it as u want(recommended {curve name}pows.circom), put it in ./powers folder, and add import to it here:
 // include "./powers/{curve name}pows.circom";
