@@ -1,0 +1,25 @@
+{
+  "name": "circom-dl",
+  "version": "1.0.0",
+  "description": "Circom lib for any hard life case.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "./node_modules/.bin/mocha -p 'test/*.js'"
+  },
+  "keywords": [
+    "Circom"
+  ],
+  "author": "Distributed lab",
+  "license": "MIT",
+  "dependencies": {
+    "chai": "^5.1.2",
+    "circom_tester": "^0.0.20",
+    "circomlib": "^2.0.5",
+    "ffjavascript": "^0.3.1",
+    "mocha": "^10.7.3",
+    "path": "^0.12.7"
+  }
+}
