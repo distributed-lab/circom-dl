@@ -2,18 +2,36 @@ pragma circom  2.1.6;
 
 include "../bigInt/bigIntOverflow.circom";
 include "../bigInt/bigIntFunc.circom";
-include "./secp256k1pows.circom";
+include "./powers/secp256k1pows.circom";
+include "./powers/brainpoolP256r1pows.circom";
 include "../bitify/bitify.circom";
 include "../bitify/comparators.circom";
 include "../int/arithmetic.circom";
+include "./get.circom";
 
 // Operation for any Weierstrass prime-field eliptic curve (for now 256-bit)
 // A, B, P in every function - params of needed curve, chunked the same as every other chunking (64 4 for now)
 // Example usage of operation (those are params for secp256k1 ec):
 // EllipticCurveDouble(64, 4, [0,0,0,0], [7,0,0,0], [18446744069414583343, 18446744073709551615, 18446744073709551615, 18446744073709551615]);
-
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// To add a new curve u should do next steps:
+// Get curve params(A, B, P) in chunked representation
+// Add new if for generator and dummy point to ./"get.circom" for your params with same chunking (use 64 4 for now)
+// Change params at 4..8 lines in "../../helpers/generate_pow_table_for_curve.py" for your curve params, then execute script
+// It will create circom file, rename it as u want(recommended {curve name}pows.circom), put it in ./powers folder, and add import to it here:
+// include "./powers/{curve name}pows.circom";
+// rename get_g_pow_stride8_table func in this file to anything (recommended "get_g_pow_stride8_table_{curve_name}")
+// in template "EllipicCurveScalarGeneratorMultiplication" add new if for getting powers
+// var powers[parts][2 ** STRIDE][2][CHUNK_NUMBER];
+// if (P[0] == 18446744069414583343 && P[1] == 18446744073709551615 && P[2] == 18446744073709551615 && P[3] == 18446744073709551615){ // change to your P chunking
+    //         powers = get_g_pow_stride8_table_secp256k1(CHUNK_SIZE, CHUNK_NUMBER);                                                      // change to your func name
+    // }
+// Now u can succesfully execute all functions for your curve
+// EllipicCurveScalarPrecomputeMultiplication still needs precomputed table
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Don`t use next templates within default point operations without understanding what are u doing, default curve operations will be below
+
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // They work fine, were used for deprecated methods
 // THEY ARE NOT ENOUGHT TO CHECK ADDITION / DOUBLING, ANY Y CALCULATED BY CORRECT FORMULA FOR ANY WILL GIVE CORRECT RESULT
 
@@ -179,13 +197,54 @@ template AdditionCheck(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     smartEqual.out * smartEqual.out + smartEqual2.out === 1;
     
 }
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Helpers templates, don`t use them outside if u don`t know what are u doing
+
+// Precomputes for pipinger optimised multiplication
+// Computes 0 * G, 1 * G, 2 * G, ... (2 ** WINDOW_SIZE - 1) * G
+template EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE){
+    signal input in[2][CHUNK_NUMBER];
+    signal input dummy;
+    
+    var PRECOMPUTE_NUMBER = 2 ** WINDOW_SIZE;
+    
+    signal output out[PRECOMPUTE_NUMBER][2][CHUNK_NUMBER];
+    dummy * dummy === 0;
+    
+    for (var i = 0; i < 2; i++){
+        for (var j = 0; j < CHUNK_NUMBER; j++){
+            out[0][i][j] <== 0;
+        }
+    }
+    
+    out[1] <== in;
+    
+    component doublers[PRECOMPUTE_NUMBER \ 2 - 1];
+    component adders  [PRECOMPUTE_NUMBER \ 2 - 1];
+    
+    for (var i = 2; i < PRECOMPUTE_NUMBER; i++){
+        if (i % 2 == 0){
+            doublers[i \ 2 - 1] = EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+            doublers[i \ 2 - 1].in <== out[i \ 2];
+            doublers[i \ 2 - 1].dummy <== dummy;
+            doublers[i \ 2 - 1].out ==> out[i];
+            
+        }
+        else {
+            adders[i \ 2 - 1] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+            adders[i \ 2 - 1].in1 <== out[1];
+            adders[i \ 2 - 1].in2 <== out[i - 1];
+            adders[i \ 2 - 1].dummy <== dummy;
+            adders[i \ 2 - 1].out ==> out[i];
+        }
+    }
+}
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Default point operations, use them for ec calculations
 
-
 // Check if given point lies on curve
-// y**2 % p === (x**3 + a*x + b) % p
+// y ** 2 % p === (x ** 3 + a * x + b) % p
 template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     assert(CHUNK_SIZE == 64);
@@ -238,78 +297,6 @@ template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
         mod.mod[i] === mod2.mod[i];
     }
     
-}
-
-// THIS IS UNSECURE, NEVER (NEVER!!!!!!!!!) USE IT IN PRODUCTION!!!!!!!!!!!
-// Calculate doubled point by vars, then check if returned point lies on tangent
-// Slightly recomended to check output for PointOnCurve if it is last operation for point,
-// but it isn`t nessesary if it is operation in middle, it will fail in next point operation
-template EllipticCurveDoubleDEPRECATED(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
-    
-    signal input in[2][CHUNK_NUMBER];
-    signal output out[2][CHUNK_NUMBER];
-    signal input dummy;
-    dummy * dummy === 0;
-    
-    var LONG3[CHUNK_NUMBER];
-    LONG3[0] = 3;
-    for (var i = 1; i < CHUNK_NUMBER; i++) {
-        LONG3[i] = 0;
-    }
-    
-    var lamb_num[200] = long_add_mod(CHUNK_SIZE, CHUNK_NUMBER, A, prod_mod(CHUNK_SIZE, CHUNK_NUMBER, LONG3, prod_mod(CHUNK_SIZE, CHUNK_NUMBER, in[0], in[0], P), P), P);
-    var lamb_denom[200] = long_add_mod(CHUNK_SIZE, CHUNK_NUMBER, in[1], in[1], P);
-    var lamb[200] = prod_mod(CHUNK_SIZE, CHUNK_NUMBER, lamb_num, mod_inv(CHUNK_SIZE, CHUNK_NUMBER, lamb_denom, P), P);
-    
-    var x3[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, prod_mod(CHUNK_SIZE, CHUNK_NUMBER, lamb, lamb, P), long_add_mod(CHUNK_SIZE, CHUNK_NUMBER, in[0], in[0], P), P);
-    var y3[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, prod_mod(CHUNK_SIZE, CHUNK_NUMBER, lamb, long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, in[0], x3, P), P), in[1], P);
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++){
-        out[0][i] <-- x3[i];
-        out[1][i] <-- y3[i];
-    }
-    
-    component tangentCheck = TangentCheck(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
-    tangentCheck.in1 <== in;
-    tangentCheck.in2 <== out;
-    tangentCheck.dummy <== dummy;
-    
-}
-
-// THIS IS UNSECURE, NEVER (NEVER!!!!!!!!!) USE IT IN PRODUCTION!!!!!!!!!!!
-// Calculate sum of points by vars, then check if returned point is sum of 2 points
-// Slightly recomended to check output for PointOnCurve if it is last operation for point,
-// but it isn`t nessesary if it is operation in middle, it will fail in next point operation
-template EllipticCurveAddDEPRECATED(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
-    
-    signal input in1[2][CHUNK_NUMBER];
-    signal input in2[2][CHUNK_NUMBER];
-    signal output out[2][CHUNK_NUMBER];
-    signal input dummy;
-    dummy * dummy === 0;
-    
-    var DY[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, in2[1], in1[1], P);
-    var DX[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, in2[0], in1[0], P);
-    
-    var DX_INV[200] = mod_inv(CHUNK_SIZE, CHUNK_NUMBER, DX, P);
-    var LAMBDA[200] = prod_mod(CHUNK_SIZE, CHUNK_NUMBER, DY, DX_INV, P);
-    
-    var LAMBDA_SQ[200] = prod_mod(CHUNK_SIZE, CHUNK_NUMBER, LAMBDA, LAMBDA, P);
-    
-    
-    var X3[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, LAMBDA_SQ, in1[0], P), in2[0], P);
-    var Y3[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, prod_mod(CHUNK_SIZE, CHUNK_NUMBER, LAMBDA, long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, in1[0], X3, P), P), in1[1], P);
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++){
-        out[0][i] <-- X3[i];
-        out[1][i] <-- Y3[i];
-    }
-    
-    component additionCheck = AdditionCheck(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
-    additionCheck.in1 <== in1;
-    additionCheck.in2 <== in2;
-    additionCheck.in3 <== out;
-    additionCheck.dummy <== dummy;
 }
 
 // λ = (3 * x ** 2 + a) / (2 * y)
@@ -440,7 +427,7 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal output out[2][CHUNK_NUMBER];
     signal input dummy;
     dummy * dummy === 0;
-
+    
     // x2 - x1
     component sub = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     sub.in1 <== in2[0];
@@ -549,7 +536,7 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 }
 
 // calculate G * scalar
-// Now works for secp256k1 only
+// Now works for secp256k1 and BrainpoolP256r1, to add other curve see header
 // To make it work for other curve u should generate generator pow table
 // Other curves will be added by ourself soon
 // Will fail if scalar == 0, don`t do it
@@ -568,8 +555,13 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
     var parts = CHUNK_NUMBER * CHUNK_SIZE \ STRIDE;
     
     dummy * dummy === 0;
-    
-    var powers[parts][2 ** STRIDE][2][CHUNK_NUMBER] = get_g_pow_stride8_table(CHUNK_SIZE, CHUNK_NUMBER);
+    var powers[parts][2 ** STRIDE][2][CHUNK_NUMBER];
+    if (P[0] == 18446744069414583343 && P[1] == 18446744073709551615 && P[2] == 18446744073709551615 && P[3] == 18446744073709551615){
+        powers = get_g_pow_stride8_table_secp256k1(CHUNK_SIZE, CHUNK_NUMBER);
+    }
+    if (P[0] == 2311270323689771895 && P[1] == 7943213001558335528 && P[2] == 4496292894210231666 && P[3] == 12248480212390422972){
+        powers = get_g_pow_stride8_table_brainpoolP256r1(CHUNK_SIZE, CHUNK_NUMBER);
+    }
     
     component num2bits[CHUNK_NUMBER];
     for (var i = 0; i < CHUNK_NUMBER; i++){
@@ -682,11 +674,11 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
             // 1 1 -> rigth
             for (var axis_idx = 0; axis_idx < 2; axis_idx++){
                 for (var j = 0; j < CHUNK_NUMBER; j++){
-                   
+                    
                     resultingPointsRight[i][axis_idx][j] <== (1 - isDummyRight[i].out) * adders[i].out[axis_idx][j];
                     resultingPointsRight2[i][axis_idx][j] <== isDummyRight[i].out * additionPoints[i][axis_idx][j] + resultingPointsRight[i][axis_idx][j];
                     resultingPointsLeft[i][axis_idx][j] <== isDummyLeft[i].out * additionPoints[i + 1][axis_idx][j];
-                    resultingPointsLeft2[i][axis_idx][j] <==  (1 - isDummyLeft[i].out) * resultingPointsRight2[i][axis_idx][j] + resultingPointsLeft[i][axis_idx][j];
+                    resultingPointsLeft2[i][axis_idx][j] <== (1 - isDummyLeft[i].out) * resultingPointsRight2[i][axis_idx][j] + resultingPointsLeft[i][axis_idx][j];
                     resultingPoints[i][axis_idx][j] <== resultingPointsLeft2[i][axis_idx][j];
                 }
             }
@@ -702,92 +694,23 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
             adders[i].in2[0][CHUNK_NUMBER - 1] <== additionPoints[i + 1][0][CHUNK_NUMBER - 1] + isDummyRight[i].out * isDummyRight[i].out;
             adders[i].in2[1][CHUNK_NUMBER - 1] <== additionPoints[i + 1][1][CHUNK_NUMBER - 1] + isDummyRight[i].out * isDummyRight[i].out;
             
-           // 0 0 -> adders
+            // 0 0 -> adders
             // 0 1 -> left
             // 1 0 -> right
             // 1 1 -> rigth
             for (var axis_idx = 0; axis_idx < 2; axis_idx++){
                 for (var j = 0; j < CHUNK_NUMBER; j++){
-                   
+                    
                     resultingPointsRight[i][axis_idx][j] <== (1 - isDummyRight[i].out) * adders[i].out[axis_idx][j];
                     resultingPointsRight2[i][axis_idx][j] <== isDummyRight[i].out * resultingPoints[i - 1][axis_idx][j] + resultingPointsRight[i][axis_idx][j];
                     resultingPointsLeft[i][axis_idx][j] <== isDummyLeft[i].out * additionPoints[i + 1][axis_idx][j];
-                    resultingPointsLeft2[i][axis_idx][j] <==  (1 - isDummyLeft[i].out) * resultingPointsRight2[i][axis_idx][j] + resultingPointsLeft[i][axis_idx][j];
+                    resultingPointsLeft2[i][axis_idx][j] <== (1 - isDummyLeft[i].out) * resultingPointsRight2[i][axis_idx][j] + resultingPointsLeft[i][axis_idx][j];
                     resultingPoints[i][axis_idx][j] <== resultingPointsLeft2[i][axis_idx][j];
                 }
             }
         }
     }
     out <== resultingPoints[parts - 2];
-}
-
-// Precomputes for pipinger optimised multiplication
-// Computes 0 * G, 1 * G, 2 * G, ... (2 ** WINDOW_SIZE - 1) * G
-template  EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE){
-    signal input in[2][CHUNK_NUMBER];
-    signal input dummy;
-    
-    var PRECOMPUTE_NUMBER = 2 ** WINDOW_SIZE;
-    
-    signal output out[PRECOMPUTE_NUMBER][2][CHUNK_NUMBER];
-    dummy * dummy === 0;
-    
-    for (var i = 0; i < 2; i++){
-        for (var j = 0; j < CHUNK_NUMBER; j++){
-            out[0][i][j] <== 0;
-        }
-    }
-    
-    out[1] <== in;
-    
-    component doublers[PRECOMPUTE_NUMBER \ 2 - 1];
-    component adders  [PRECOMPUTE_NUMBER \ 2 - 1];
-    
-    for (var i = 2; i < PRECOMPUTE_NUMBER; i++){
-        if (i % 2 == 0){
-            doublers[i \ 2 - 1] = EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
-            doublers[i \ 2 - 1].in <== out[i \ 2];
-            doublers[i \ 2 - 1].dummy <== dummy;
-            doublers[i \ 2 - 1].out ==> out[i];
-            
-        }
-        else {
-            adders[i \ 2 - 1] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
-            adders[i \ 2 - 1].in1 <== out[1];
-            adders[i \ 2 - 1].in2 <== out[i - 1];
-            adders[i \ 2 - 1].dummy <== dummy;
-            adders[i \ 2 - 1].out ==> out[i];
-        }
-    }
-}
-
-// Get generator by curve params
-// Now there is only secp256k1 generator (64 4 chunking)
-// Other curves / chunking will be added later
-template EllipticCurveGetGenerator(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
-    signal output gen[2][CHUNK_NUMBER];
-    gen[0] <== [6481385041966929816, 188021827762530521, 6170039885052185351, 8772561819708210092];
-    gen[1] <== [11261198710074299576, 18237243440184513561, 6747795201694173352, 5204712524664259685];
-}
-
-// Get "dummy" point
-// We can`t if signal in circom, so we always need to do all opertions, even we won`t use results of them
-// For example, in scalar mult we can have case where we shouln`t add anything (bits = [0,0, .. ,0])
-// We will ignore result, but we still should get it, so we need to pout something anyway
-// We use this dummy point for such purposes
-// Dummy point = G * 2**256
-template EllipticCurveGetDummy(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
-    
-    signal output dummyPoint[2][CHUNK_SIZE];
-    
-    dummyPoint[0][0] <== 10590052641807177607;
-    dummyPoint[0][1] <== 9925333800925632128;
-    dummyPoint[0][2] <== 8387557479920400525;
-    dummyPoint[0][3] <== 15939969690812260448;
-    dummyPoint[1][0] <== 4032565550822761843;
-    dummyPoint[1][1] <== 10670260723290159449;
-    dummyPoint[1][2] <== 7050988852899951050;
-    dummyPoint[1][3] <== 8797939803687366868;
 }
 
 // Optimised scalar point multiplication, use it if u can`t add precompute table
@@ -813,13 +736,13 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
     
     signal precomputed[PRECOMPUTE_NUMBER][2][CHUNK_NUMBER];
     
-    component precompute =  EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE);
+    component precompute = EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE);
     precompute.in <== in;
     precompute.dummy <== dummy;
     precompute.out ==> precomputed;
     
     var DOUBLERS_NUMBER = CHUNK_SIZE * CHUNK_NUMBER - WINDOW_SIZE;
-    var ADDERS_NUMBER = CHUNK_SIZE * CHUNK_NUMBER \ WINDOW_SIZE; 
+    var ADDERS_NUMBER = CHUNK_SIZE * CHUNK_NUMBER \ WINDOW_SIZE;
     
     component doublers[DOUBLERS_NUMBER];
     component adders  [ADDERS_NUMBER];
@@ -835,7 +758,7 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
     signal tmp4[ADDERS_NUMBER]    [2]   [CHUNK_NUMBER];
     signal tmp5[ADDERS_NUMBER]    [2][2][CHUNK_NUMBER];
     signal tmp6[ADDERS_NUMBER - 1][2][2][CHUNK_NUMBER];
-    signal tmp7[ADDERS_NUMBER - 1][2]   [CHUNK_NUMBER]; 
+    signal tmp7[ADDERS_NUMBER - 1][2]   [CHUNK_NUMBER];
     
     component equals    [ADDERS_NUMBER][PRECOMPUTE_NUMBER][2][CHUNK_NUMBER];
     component zeroEquals[ADDERS_NUMBER];
@@ -978,12 +901,14 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
 // But pubkey reveal leads to other problem: it is zk now, and u can know who signer is
 // This can be crutial, so be careful with it
 // To generate table for input, use script located in "../helpers/generate_mult_input.py"
+// Change lines 127..132 to get input
+// Note that Gx and Gy is your point, not generator (U can simply use generator multiplication without generating other table for generator)
 template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
     var STRIDE = 8;
     var parts = CHUNK_NUMBER * CHUNK_SIZE \ STRIDE;
-
+    
     signal input scalar[CHUNK_NUMBER];
     signal input dummy;
     signal input in[2][CHUNK_NUMBER];
@@ -991,7 +916,7 @@ template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A,
     signal output out[2][CHUNK_NUMBER];
     
     dummy * dummy === 0;
-
+    
     //----------------------------------------------------------------------------------------------------------------------------------------------------------------
     // We don`t use point anywhere, we should add any quadratic constraint for secure issues
     // I don`t sure if public inputs needs it, but it is 8 constraints from ~500 000, so better to let it be
@@ -1112,11 +1037,11 @@ template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A,
             // 1 1 -> rigth
             for (var axis_idx = 0; axis_idx < 2; axis_idx++){
                 for (var j = 0; j < CHUNK_NUMBER; j++){
-                   
+                    
                     resultingPointsRight[i][axis_idx][j] <== (1 - isDummyRight[i].out) * adders[i].out[axis_idx][j];
                     resultingPointsRight2[i][axis_idx][j] <== isDummyRight[i].out * additionPoints[i][axis_idx][j] + resultingPointsRight[i][axis_idx][j];
                     resultingPointsLeft[i][axis_idx][j] <== isDummyLeft[i].out * additionPoints[i + 1][axis_idx][j];
-                    resultingPointsLeft2[i][axis_idx][j] <==  (1 - isDummyLeft[i].out) * resultingPointsRight2[i][axis_idx][j] + resultingPointsLeft[i][axis_idx][j];
+                    resultingPointsLeft2[i][axis_idx][j] <== (1 - isDummyLeft[i].out) * resultingPointsRight2[i][axis_idx][j] + resultingPointsLeft[i][axis_idx][j];
                     resultingPoints[i][axis_idx][j] <== resultingPointsLeft2[i][axis_idx][j];
                 }
             }
@@ -1132,17 +1057,17 @@ template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A,
             adders[i].in2[0][CHUNK_NUMBER - 1] <== additionPoints[i + 1][0][CHUNK_NUMBER - 1] + isDummyRight[i].out * isDummyRight[i].out;
             adders[i].in2[1][CHUNK_NUMBER - 1] <== additionPoints[i + 1][1][CHUNK_NUMBER - 1] + isDummyRight[i].out * isDummyRight[i].out;
             
-           // 0 0 -> adders
+            // 0 0 -> adders
             // 0 1 -> left
             // 1 0 -> right
             // 1 1 -> rigth
             for (var axis_idx = 0; axis_idx < 2; axis_idx++){
                 for (var j = 0; j < CHUNK_NUMBER; j++){
-                   
+                    
                     resultingPointsRight[i][axis_idx][j] <== (1 - isDummyRight[i].out) * adders[i].out[axis_idx][j];
                     resultingPointsRight2[i][axis_idx][j] <== isDummyRight[i].out * resultingPoints[i - 1][axis_idx][j] + resultingPointsRight[i][axis_idx][j];
                     resultingPointsLeft[i][axis_idx][j] <== isDummyLeft[i].out * additionPoints[i + 1][axis_idx][j];
-                    resultingPointsLeft2[i][axis_idx][j] <==  (1 - isDummyLeft[i].out) * resultingPointsRight2[i][axis_idx][j] + resultingPointsLeft[i][axis_idx][j];
+                    resultingPointsLeft2[i][axis_idx][j] <== (1 - isDummyLeft[i].out) * resultingPointsRight2[i][axis_idx][j] + resultingPointsLeft[i][axis_idx][j];
                     resultingPoints[i][axis_idx][j] <== resultingPointsLeft2[i][axis_idx][j];
                 }
             }

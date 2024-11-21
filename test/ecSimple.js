@@ -141,6 +141,23 @@ async function testDouble(input1, input2, circuit){
     }
 }
 
+async function testDoubleBrainpoolP256r1(input1, input2, circuit){
+    let input = [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)];
+
+
+    let doubled = point_double(input1, input2, 56698187605326110043627228396178346077120614539475214109386828188763884139993n, 76884956397045344220809746629001649093037950200943055203735601445031516197751n)
+
+    let real_result = bigintToArray(64, 4, doubled.x).concat(bigintToArray(64, 4, doubled.y));
+
+    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+
+    let circuit_result = w.slice(1, 1+8);
+
+    for (var i = 0; i < 8; i++){
+        assert(circuit_result[i] == real_result[i], `BrainpoolP256r1 double(${input1}; ${input2})`);
+    }
+}
+
 async function testAdd(input1, input2, input3, input4, circuit){
 
     let added = point_add(input1, input2, input3, input4, 115792089237316195423570985008687907853269984665640564039457584007908834671663n)
@@ -156,7 +173,23 @@ async function testAdd(input1, input2, input3, input4, circuit){
     }
 }
 
-describe("Add test", function () {
+async function testAddBrainpoolP256r1(input1, input2, input3, input4, circuit){
+    let input = [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)];
+
+    let added = point_add(input1, input2, input3, input4, 76884956397045344220809746629001649093037950200943055203735601445031516197751n)
+
+    let real_result = bigintToArray(64, 4, added.x).concat(bigintToArray(64, 4, added.y));
+
+    const w = await circuit.calculateWitness({in1: [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)], in2: [bigintToArray(64, 4, input3), bigintToArray(64, 4, input4)], dummy: 0n}, true);
+
+    let circuit_result = w.slice(1, 1+8);
+
+    for (var i = 0; i < 8; i++){
+        assert(circuit_result[i] == real_result[i], `BrainpoolP256r1 double(${input1}; ${input2})`);
+    }
+}
+
+describe("Secp256r1 Add test", function () {
 
     this.timeout(100000);
     let circuit;
@@ -174,7 +207,21 @@ describe("Add test", function () {
     });
 });
 
-describe("Double test", function () {
+describe("Brainpool Add test", function () {
+
+    this.timeout(100000);
+    let circuit;
+
+    before(async () => {
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "ec", "addBrainpoolP256r1.circom"));
+    });
+
+    it("G + 2 * G", async function () {
+        await testAddBrainpoolP256r1(63243729749562333355292243550312970334778175571054726587095381623627144114786n, 38218615093753523893122277964030810387585405539772602581557831887485717997975n, 52575969560191351534542091466380106041028581718640875237441073011616025668110n, 24843789797109572893402439557748964186754677981311543350228155441542769376468n, circuit);
+    });
+});
+
+describe("Secp256r1 Double test", function () {
 
     this.timeout(100000);
     let circuit;
@@ -183,7 +230,7 @@ describe("Double test", function () {
         circuit = await wasm_tester(path.join(__dirname, "circuits", "ec", "double.circom"));
     });
 
-    it("G * 2", async function () {
+    it("Secp256r1 G * 2", async function () {
         await testDouble(55066263022277343669578718895168534326250603453777594175500187360389116729240n, 32670510020758816978083085130507043184471273380659243275938904335757337482424n, circuit);
     });
 
@@ -193,7 +240,22 @@ describe("Double test", function () {
 
 });
 
-describe("On Curve test", function () {
+describe("Brainpool Double test", function () {
+
+    this.timeout(100000);
+    let circuit;
+
+    before(async () => {
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "ec", "doubleBrainpoolP256r1.circom"));
+    });
+
+    it("Brainpool G * 2", async function () {
+        await testDoubleBrainpoolP256r1(63243729749562333355292243550312970334778175571054726587095381623627144114786n, 38218615093753523893122277964030810387585405539772602581557831887485717997975n, circuit);
+    });
+
+});
+
+describe("Secp256r1 On Curve test", function () {
 
     this.timeout(100000);
     let circuit;
