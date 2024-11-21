@@ -109,13 +109,6 @@ template TangentCheck(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 // (x1, y1), (x2, y2) - point that were added to each other, (x3, y3) - result 
 // λ = (y2 - y1) / (x2 - x1)
 // y3​ == λ * (x1 ​− x3​) − y1
-// TODO: Research why (x3, y3) passes this check and will it harm the security and force us to use more checks:
-// λ = (y2 - y1) / (x2 - x1)
-// x3 = (λ * λ - x1 - x1 % p)
-// y3 = (λ * (x1 - x3) - y1) % p
-// Correct formula for it is:
-// x3 = (λ * λ - x1 - x2 % p) // here - x1 - x2, not -2 * x1
-// y3 = (λ * (x1 - x3) - y1) % p
 template AdditionCheck(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     // assert(CHUNK_SIZE == 64);
     
@@ -189,6 +182,7 @@ template AdditionCheck(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Default point operations, use them for ec calculations
+
 
 // Check if given point lies on curve
 // y**2 % p === (x**3 + a*x + b) % p
@@ -446,7 +440,7 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal output out[2][CHUNK_NUMBER];
     signal input dummy;
     dummy * dummy === 0;
-        
+
     // x2 - x1
     component sub = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     sub.in1 <== in2[0];
@@ -966,4 +960,193 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
     }
     
     out <== res[ADDERS_NUMBER];
+}
+
+// Our elliptic scalar mult cost almost ~5 000 000 constarints
+// There is a way to reduce it if can make some precomputations off-circuit
+// One of examples is Generator multiplication, which costs almost ~550 000 (10 times less!)
+// So, solution is next:
+// If u know point at the moment of compilation, u can precompute this table as same, then insert it as input
+// We should understand that it can be insecure, cause this table size (256 * 32 points of 512 bytes each -> 4kb) is too big to make it public input
+// Our decision is to make result public and input public, so u can check if result was calculated in right way anywhere else (on smart contracts, for example)
+// This can prevent fake table adding
+// There is no problem of making result point output, but making input point public may cause other zk idea problems:
+// For example, we want to verify ECDSA, and have message, signature and pubkey.
+// If u do it with defauld scalar mult, it will take ~ 5 600 000 constraints, while if u use precomputed table - ~ 1 200 000
+// But u need to make pubkey public in this case
+// I u have no problem with it, use this one, and u will get 5 times less consraints verification
+// But pubkey reveal leads to other problem: it is zk now, and u can know who signer is
+// This can be crutial, so be careful with it
+// To generate table for input, use script located in "../helpers/generate_mult_input.py"
+template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+    
+    assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
+    var STRIDE = 8;
+    var parts = CHUNK_NUMBER * CHUNK_SIZE \ STRIDE;
+
+    signal input scalar[CHUNK_NUMBER];
+    signal input dummy;
+    signal input in[2][CHUNK_NUMBER];
+    signal input powers[parts][2 ** STRIDE][2][CHUNK_NUMBER];
+    signal output out[2][CHUNK_NUMBER];
+    
+    dummy * dummy === 0;
+
+    //----------------------------------------------------------------------------------------------------------------------------------------------------------------
+    // We don`t use point anywhere, we should add any quadratic constraint for secure issues
+    // I don`t sure if public inputs needs it, but it is 8 constraints from ~500 000, so better to let it be
+    // U can remove it if u sure that this one isn`t nessesary for security
+    signal secureIn[2][CHUNK_NUMBER];
+    for (var i = 0; i < 2; i++){
+        for (var j = 0; j < CHUNK_NUMBER; j++){
+            secureIn[i][j] <== in[i][j] * in[i][j];
+        }
+    }
+    //----------------------------------------------------------------------------------------------------------------------------------------------------------------
+    
+    component num2bits[CHUNK_NUMBER];
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        num2bits[i] = Num2Bits(CHUNK_SIZE);
+        num2bits[i].in <== scalar[i];
+    }
+    component bits2num[parts];
+    for (var i = 0; i < parts; i++){
+        bits2num[i] = Bits2Num(STRIDE);
+        for (var j = 0; j < STRIDE; j++){
+            bits2num[i].in[j] <== num2bits[(i * STRIDE + j) \ CHUNK_SIZE].out[(i * STRIDE + j) % CHUNK_SIZE];
+        }
+    }
+    
+    component equal[parts][2 ** STRIDE];
+    signal resultCoordinateComputation[parts][2 ** STRIDE][2][CHUNK_NUMBER];
+    for (var i = 0; i < parts; i++){
+        for (var j = 0; j < 2 ** STRIDE; j++){
+            equal[i][j] = IsEqual();
+            equal[i][j].in[0] <== j;
+            equal[i][j].in[1] <== bits2num[i].out;
+            
+            for (var axis_idx = 0; axis_idx < CHUNK_NUMBER; axis_idx++){
+                resultCoordinateComputation[i][j][0][axis_idx] <== equal[i][j].out * powers[i][j][0][axis_idx];
+            }
+            for (var axis_idx = 0; axis_idx < CHUNK_NUMBER; axis_idx++){
+                resultCoordinateComputation[i][j][1][axis_idx] <== equal[i][j].out * powers[i][j][1][axis_idx];
+            }
+        }
+    }
+    
+    component getSumOfNElements[parts][2][CHUNK_NUMBER];
+    for (var i = 0; i < parts; i++){
+        for (var j = 0; j < 2; j++){
+            for (var axis_idx = 0; axis_idx < CHUNK_NUMBER; axis_idx++){
+                getSumOfNElements[i][j][axis_idx] = GetSumOfNElements(2 ** STRIDE);
+                getSumOfNElements[i][j][axis_idx].dummy <== dummy;
+                for (var stride_idx = 0; stride_idx < 2 ** STRIDE; stride_idx++){
+                    getSumOfNElements[i][j][axis_idx].in[stride_idx] <== resultCoordinateComputation[i][stride_idx][j][axis_idx];
+                }
+            }
+        }
+    }
+    
+    component isZero[parts];
+    for (var i = 0; i < parts; i++){
+        isZero[i] = IsZero();
+        isZero[i].in <== getSumOfNElements[i][0][0].out + getSumOfNElements[i][0][1].out + getSumOfNElements[i][0][2].out + getSumOfNElements[i][0][3].out + getSumOfNElements[i][1][0].out + getSumOfNElements[i][1][1].out + getSumOfNElements[i][1][2].out + getSumOfNElements[i][1][3].out + dummy * dummy;
+    }
+    
+    signal precomptedDummy[parts][2][CHUNK_NUMBER];
+    
+    component getDummy = EllipticCurveGetDummy(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+    
+    for (var part_idx = 0; part_idx < parts; part_idx++){
+        for (var i = 0; i < 2; i++){
+            for (var j = 0; j < CHUNK_NUMBER; j++){
+                precomptedDummy[part_idx][i][j] <== isZero[part_idx].out * getDummy.dummyPoint[i][j];
+            }
+        }
+    }
+    
+    signal additionPoints[parts][2][CHUNK_NUMBER];
+    for (var part_idx = 0; part_idx < parts; part_idx++){
+        for (var i = 0; i < 2; i++){
+            for (var j = 0; j < CHUNK_NUMBER; j++){
+                additionPoints[part_idx][i][j] <== (1 - isZero[part_idx].out) * getSumOfNElements[part_idx][i][j].out + precomptedDummy[part_idx][i][j];
+            }
+        }
+    }
+    
+    component adders[parts - 1];
+    component isDummyLeft[parts - 1];
+    component isDummyRight[parts - 1];
+    
+    
+    signal resultingPointsLeft[parts][2][CHUNK_NUMBER];
+    signal resultingPointsLeft2[parts][2][CHUNK_NUMBER];
+    signal resultingPointsRight[parts][2][CHUNK_NUMBER];
+    signal resultingPointsRight2[parts][2][CHUNK_NUMBER];
+    signal resultingPoints[parts][2][CHUNK_NUMBER];
+    
+    
+    for (var i = 0; i < parts - 1; i++){
+        adders[i] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        adders[i].dummy <== dummy;
+        isDummyLeft[i] = IsEqual();
+        isDummyRight[i] = IsEqual();
+        
+        isDummyLeft[i].in[0] <== getDummy.dummyPoint[0][0];
+        isDummyRight[i].in[0] <== getDummy.dummyPoint[0][0];
+        
+        if (i == 0){
+            isDummyLeft[i].in[1] <== additionPoints[i][0][0];
+            isDummyRight[i].in[1] <== additionPoints[i + 1][0][0];
+            adders[i].in1 <== additionPoints[i];
+            for (var j = 0; j < CHUNK_NUMBER - 1; j++){
+                adders[i].in2[0][j] <== additionPoints[i + 1][0][j];
+                adders[i].in2[1][j] <== additionPoints[i + 1][1][j];
+            }
+            adders[i].in2[0][CHUNK_NUMBER - 1] <== additionPoints[i + 1][0][CHUNK_NUMBER - 1] + isDummyRight[i].out * isDummyRight[i].out;
+            adders[i].in2[1][CHUNK_NUMBER - 1] <== additionPoints[i + 1][1][CHUNK_NUMBER - 1] + isDummyRight[i].out * isDummyRight[i].out;
+            
+            // 0 0 -> adders
+            // 0 1 -> left
+            // 1 0 -> right
+            // 1 1 -> rigth
+            for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+                for (var j = 0; j < CHUNK_NUMBER; j++){
+                   
+                    resultingPointsRight[i][axis_idx][j] <== (1 - isDummyRight[i].out) * adders[i].out[axis_idx][j];
+                    resultingPointsRight2[i][axis_idx][j] <== isDummyRight[i].out * additionPoints[i][axis_idx][j] + resultingPointsRight[i][axis_idx][j];
+                    resultingPointsLeft[i][axis_idx][j] <== isDummyLeft[i].out * additionPoints[i + 1][axis_idx][j];
+                    resultingPointsLeft2[i][axis_idx][j] <==  (1 - isDummyLeft[i].out) * resultingPointsRight2[i][axis_idx][j] + resultingPointsLeft[i][axis_idx][j];
+                    resultingPoints[i][axis_idx][j] <== resultingPointsLeft2[i][axis_idx][j];
+                }
+            }
+            
+        } else {
+            isDummyLeft[i].in[1] <== resultingPoints[i - 1][0][0];
+            isDummyRight[i].in[1] <== additionPoints[i + 1][0][0];
+            adders[i].in1 <== resultingPoints[i - 1];
+            for (var j = 0; j < CHUNK_NUMBER - 1; j++){
+                adders[i].in2[0][j] <== additionPoints[i + 1][0][j];
+                adders[i].in2[1][j] <== additionPoints[i + 1][1][j];
+            }
+            adders[i].in2[0][CHUNK_NUMBER - 1] <== additionPoints[i + 1][0][CHUNK_NUMBER - 1] + isDummyRight[i].out * isDummyRight[i].out;
+            adders[i].in2[1][CHUNK_NUMBER - 1] <== additionPoints[i + 1][1][CHUNK_NUMBER - 1] + isDummyRight[i].out * isDummyRight[i].out;
+            
+           // 0 0 -> adders
+            // 0 1 -> left
+            // 1 0 -> right
+            // 1 1 -> rigth
+            for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+                for (var j = 0; j < CHUNK_NUMBER; j++){
+                   
+                    resultingPointsRight[i][axis_idx][j] <== (1 - isDummyRight[i].out) * adders[i].out[axis_idx][j];
+                    resultingPointsRight2[i][axis_idx][j] <== isDummyRight[i].out * resultingPoints[i - 1][axis_idx][j] + resultingPointsRight[i][axis_idx][j];
+                    resultingPointsLeft[i][axis_idx][j] <== isDummyLeft[i].out * additionPoints[i + 1][axis_idx][j];
+                    resultingPointsLeft2[i][axis_idx][j] <==  (1 - isDummyLeft[i].out) * resultingPointsRight2[i][axis_idx][j] + resultingPointsLeft[i][axis_idx][j];
+                    resultingPoints[i][axis_idx][j] <== resultingPointsLeft2[i][axis_idx][j];
+                }
+            }
+        }
+    }
+    out <== resultingPoints[parts - 2];
 }

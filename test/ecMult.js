@@ -1,6 +1,6 @@
 const { assert, log } = require("console");
 const path = require("path");
-
+const fs = require('fs');
 const Scalar = require("ffjavascript").Scalar;
 const wasm_tester = require("circom_tester").wasm;
 
@@ -164,24 +164,46 @@ async function testGenMult(input1, circuit){
     }
 }
 
-// describe("Generator multiplication test", function () {
+async function testPrecomputeMult(input1, input2, input3,circuit){
+    const P = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2fn;
+    const A = 0n;
+    const B = 7n;
 
-//     this.timeout(10000000);
-//     let circuit;
+    let json = path.join(__dirname, `./precompute.json`);
+    const data = await fs.promises.readFile(json, 'utf8');
+    const input = JSON.parse(data);
 
-//     before(async () => {
-//         circuit = await wasm_tester(path.join(__dirname, "circuits", "ec", "generatorMult.circom"));
-//     });
+    let mult = point_scalar_mul(input1, input2, input3, 0n, 115792089237316195423570985008687907853269984665640564039457584007908834671663n)
 
-//     it("2 * G", async function () {
-//         await testGenMult(2n, circuit);
-//     });
+    let real_result = bigintToArray(64, 4, mult.x).concat(bigintToArray(64, 4, mult.y));
 
-//     it("115792089237316195417293883273301227131288926373708328631619254798622859984896 * G", async function () {
-//         await testGenMult(115792089237316195417293883273301227131288926373708328631619254798622859984896n, circuit);
-//     });
+    const w = await circuit.calculateWitness({scalar: bigintToArray(64, 4, input3), in: [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)], dummy: 0n, powers: input.powers}, true);
 
-// });
+    let circuit_result = w.slice(1, 1+8);
+
+    for (var i = 0; i < 8; i++){
+        assert(circuit_result[i] == real_result[i], `${real_result[i]} ${circuit_result[i]}`);
+    }
+}
+
+describe("Generator multiplication test", function () {
+
+    this.timeout(10000000);
+    let circuit;
+
+    before(async () => {
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "ec", "generatorMult.circom"));
+    });
+
+    it("2 * G", async function () {
+        await testGenMult(2n, circuit);
+    });
+
+    it("115792089237316195417293883273301227131288926373708328631619254798622859984896 * G", async function () {
+        await testGenMult(115792089237316195417293883273301227131288926373708328631619254798622859984896n, circuit);
+    });
+
+});
 
 
 describe("Scalar point multiplication test", function () {
@@ -203,3 +225,18 @@ describe("Scalar point multiplication test", function () {
 
 });
 
+// If u want change this tests, put correct table at precompute.json
+describe("Precompute scalar point multiplication test", function () {
+
+    this.timeout(10000000);
+    let circuit;
+
+    before(async () => {
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "ec", "precomputeMult.circom"));
+    });
+
+    it("4 * (55066263022277343669578718895168534326250603453777594175500187360389116729240; 32670510020758816978083085130507043184471273380659243275938904335757337482424)", async function () {
+        await testPrecomputeMult(55066263022277343669578718895168534326250603453777594175500187360389116729240n, 32670510020758816978083085130507043184471273380659243275938904335757337482424n, 4n, circuit);
+    });
+
+});
