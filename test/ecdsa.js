@@ -1,6 +1,5 @@
 const { assert, log } = require("console");
 const path = require("path");
-
 const Scalar = require("ffjavascript").Scalar;
 const wasm_tester = require("circom_tester").wasm;
 
@@ -196,7 +195,6 @@ async function testVerBits(input1, input2, input3, input4, input5, circuit){
     }
 }
 
-
 describe("Ecdsa num test", function () {
 
     this.timeout(10000000);
@@ -214,7 +212,6 @@ describe("Ecdsa num test", function () {
         await testVerNum(31374990377422060663897166666788812921270243020104798068084951911347116539007n, 41157152733927076370846415947227885284998856909034587685323725392788996793783n, 41785691604214669431201278410214784582546070760560366208613932232380633581249n, 45015635295556179986733632766516885633143292479837071894657301025399130399180n, 53877815096637157910110176920073475792177340572623780182175655462294595163783n, circuit);
     });
 });
-
 
 describe("Ecdsa bits test", function () {
 

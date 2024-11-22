@@ -8,7 +8,7 @@ m2.circom
 dev
 dev.*
 tools
-circuits/hasher/*
+circuits/hasher/HashBits.circom
 circuits/babyjubjub/*
 test/circuits/babyjubjub/*
 test/montogomery.js
