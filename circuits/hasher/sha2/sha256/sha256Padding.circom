@@ -1,42 +1,50 @@
-pragma circom 2.0.0;
+pragma circom 2.1.6;
 
-//------------------------------------------------------------------------------
-// compute the number of chunks
+function process_padding(LEN, LEN_PADDED){
+    
+    var tmp_len = LEN;
+    var bit_len[128];
+    var len_bit_len = 0;
+    var is_zero = 0;
+    for (var i = 0; i < 128; i++){
+        bit_len[i] = tmp_len % 2;
+        tmp_len = tmp_len \ 2;
+        if (tmp_len == 0 && is_zero == 0){
+            len_bit_len = i + 1;
+            is_zero = 1;
+            
+        }
+    }
+    var padding[1536]; 
+   
+    padding[0] = 1;
+    for (var i = 1; i < LEN_PADDED - LEN - len_bit_len; i++){
+        padding[i] = 0;
+    }
+    for (var i = LEN_PADDED - LEN - 1; i >= LEN_PADDED - LEN - len_bit_len; i--){
+        padding[i] = bit_len[LEN_PADDED - LEN - 1 - i];
+    }
 
-function SHA2_224_256_compute_number_of_chunks(len_bits) {
-    var nchunks = ((len_bits + 1 + 128) + 511) \ 512;
-    return nchunks;
+    return padding;
 }
 
-//------------------------------------------------------------------------------
-// padding for SHA2-384 and SHA2-512 (they are the same)
-// NOTE: `len` should be given as the number of *bits* 
+// Universal sha-1 and sha-2 padding.
+// HASH_BLOCK_SIZE is 512 for sha-1, sha2-224, sha2-256
+// HASH_BLOCK_SIZE is 1024 for sha2-384, sha2-512
+// LEN is bit len of message
+template ShaPadding(LEN, HASH_BLOCK_SIZE){
 
-template SHA2_224_256_padding(len) {
-    
-    var nchunks = SHA2_224_256_compute_number_of_chunks(len);
-    var nbits = nchunks * 512;
-    
-    signal input  inp[len];
-    signal output out[nchunks][512];
-    
-    for (var i = 0; i < len; i++) {
-        inp[i] ==> out[i \ 512][i % 512];
+    var CHUNK_NUMBER = ((LEN + 1 + 128) + HASH_BLOCK_SIZE - 1) \ HASH_BLOCK_SIZE;
+
+    signal input in[LEN];
+    signal output out[CHUNK_NUMBER * HASH_BLOCK_SIZE];
+
+    for (var i = 0; i < LEN; i++){
+        out[i] <== in[i];
     }
-    
-    out[len \ 512][len % 512] <== 1;
-    for (var i = len + 1; i < nbits - 128; i++) {
-        out[i \ 512][i % 512] <== 0;
+
+    var padding[1536] = process_padding(LEN, CHUNK_NUMBER * HASH_BLOCK_SIZE);
+    for (var i = LEN; i < CHUNK_NUMBER * HASH_BLOCK_SIZE; i++){
+        out[i] <== padding[i - LEN];
     }
-    
-    component len_tb = ToBits(128);
-    len_tb.inp <== len;
-    for (var j = 0; j < 128; j++) {
-        var i = nbits - 128 + j;
-        out[i \ 512][i % 512] <== len_tb.out[127 - j];
-    }
-    
 }
-
-//------------------------------------------------------------------------------
-

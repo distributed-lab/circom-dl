@@ -8,7 +8,8 @@ template Sha512InitialValue() {
     signal output out[8][64];
     
     var INITIAL_STATE[8] =
-    [ 0x6a09e667f3bcc908,
+    [
+    0x6a09e667f3bcc908,
     0xbb67ae8584caa73b,
     0x3c6ef372fe94f82b,
     0xa54ff53a5f1d36f1,

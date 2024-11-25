@@ -12,6 +12,8 @@ template Sha2_384_512CompressInner() {
     
     signal input inp;
     signal input key;
+    signal input dummy;
+    dummy * dummy === 0;
     
     signal input a[64];
     signal input b[64];
@@ -31,18 +33,20 @@ template Sha2_384_512CompressInner() {
     signal output outG[64];
     signal output outHH;
     
-    var d_sum = 0;
-    var h_sum = 0;
+    component dSum = GetSumOfNElements(64);
+    dSum.dummy <== dummy;
+    component hSum = GetSumOfNElements(64);
+    hSum.dummy <== dummy;
     for (var i = 0; i < 64; i++) {
         outG[i] <== f[i];
         outF[i] <== e[i];
         outC[i] <== b[i];
         outB[i] <== a[i];
-        d_sum += (1 << i) * c[i];
-        h_sum += (1 << i) * g[i];
+        dSum.in[i] <== (1 << i) * c[i];
+        hSum.in[i] <== (1 << i) * g[i];
     }
-    outDD <== d_sum;
-    outHH <== h_sum;
+    outDD <== dSum.out;
+    outHH <== hSum.out;
     
     signal chb[64];
     
@@ -50,46 +54,50 @@ template Sha2_384_512CompressInner() {
     component s0Xor[64];
     component s1Xor[64];
     
-    var S0_SUM = 0;
-    var S1_SUM = 0;
-    var mj_sum = 0;
-    var ch_sum = 0;
+    component s0Sum = GetSumOfNElements(64);
+    s0Sum.dummy <== dummy;
+    component s1Sum = GetSumOfNElements(64);
+    s1Sum.dummy <== dummy;
+    component mjSum = GetSumOfNElements(64);
+    mjSum.dummy <== dummy;
+    component chSum = GetSumOfNElements(64);
+    chSum.dummy <== dummy;
     
     for (var i = 0; i < 64; i++) {
         
         // ch(e,f,g) = if e then f else g = e(f-g)+g
         chb[i] <== e[i] * (f[i] - g[i]) + g[i];
-        ch_sum += (1 << i) * chb[i];
+        chSum.in[i] <== (1 << i) * chb[i];
         
         // maj(a,b,c) = at least two of them is 1 = second bit of the sum
         major[i] = Bits2();
         major[i].xy <== a[i] + b[i] + c[i];
-        mj_sum += (1 << i) * major[i].hi;
+        mjSum.in[i] <== (1 << i) * major[i].hi;
         
         s0Xor[i] = XOR3_v2();
         s0Xor[i].x <== a[ (i + 28) % 64 ];
         s0Xor[i].y <== a[ (i + 34) % 64 ];
         s0Xor[i].z <== a[ (i + 39) % 64 ];
-        S0_SUM += (1 << i) * s0Xor[i].out;
+        s0Sum.in[i] <== (1 << i) * s0Xor[i].out;
         
         s1Xor[i] = XOR3_v2();
         s1Xor[i].x <== e[ (i + 14) % 64 ];
         s1Xor[i].y <== e[ (i + 18) % 64 ];
         s1Xor[i].z <== e[ (i + 41) % 64 ];
-        S1_SUM += (1 << i) * s1Xor[i].out;
+         s1Sum.in[i] <== (1 << i) * s1Xor[i].out;
         
     }
     
-    signal OverflowE <== dd + hh + S1_SUM + ch_sum + key + inp;
-    signal OverflowA <== hh + S1_SUM + ch_sum + key + inp + S0_SUM + mj_sum;
+    signal overflowE <== dd + hh + s1Sum.out + chSum.out + key + inp;
+    signal overflowA <== hh + s1Sum.out + chSum.out + key + inp + s0Sum.out + mjSum.out;
     
-    component decomposeE = Bits67();
-    decomposeE.inp <== OverflowE;
-    decomposeE.outBits ==> outE;
+   component decomposeE = GetLastNBits(64);
+    decomposeE.in <== overflowE;
+    decomposeE.out ==> outE;
     
-    component decomposeA = Bits67();
-    decomposeA.inp <== OverflowA;
-    decomposeA.outBits ==> outA;
+    component decomposeA = GetLastNBits(64);
+    decomposeA.in <== overflowA;
+    decomposeA.out ==> outA;
     
 }
 

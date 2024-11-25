@@ -8,7 +8,8 @@ template Sha384InitialValues() {
     signal output out[8][64];
     
     var INITIAL_STATE[8] =
-    [ 0xcbbb9d5dc1059ed8,
+    [
+    0xcbbb9d5dc1059ed8,
     0x629a292a367cd507,
     0x9159015a3070dd17,
     0x152fecd8f70e5939,

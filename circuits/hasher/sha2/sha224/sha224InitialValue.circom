@@ -8,7 +8,8 @@ template Sha224InitialValue() {
     signal output out[8][32];
     
     var INITIAL_STATE[8] =
-    [ 0xc1059ed8,
+    [
+    0xc1059ed8,
     0x367cd507,
     0x3070dd17,
     0xf70e5939,

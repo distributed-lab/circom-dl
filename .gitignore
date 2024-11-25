@@ -13,7 +13,7 @@ circuits/babyjubjub/*
 test/circuits/babyjubjub/*
 test/montogomery.js
 input*.json
-tmp.circom
+tmp*.circom
 tmp.txt
 bigIntPredefined.circom
 .DS_STORE

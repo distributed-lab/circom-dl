@@ -7,7 +7,10 @@ include "sha512Rounds.circom";
 
 template Sha512HashChunks(BLOCK_NUM) {
     
-    signal input  in[BLOCK_NUM * 1024];
+    signal input in[BLOCK_NUM * 1024];
+    signal input dummy;
+    dummy * dummy === 0;
+
     signal output out[512];
     
     signal states[BLOCK_NUM + 1][8][64];
@@ -21,7 +24,9 @@ template Sha512HashChunks(BLOCK_NUM) {
     for (var m = 0; m < BLOCK_NUM; m++) {
         
         sch[m] = Sha2_384_512Schedule();
+        sch[m].dummy <== dummy;
         rds[m] = Sha2_384_512Rounds(80);
+        rds[m].dummy <== dummy;
         
         for (var k = 0; k < 16; k++) {
             for (var i = 0; i < 64; i++) {
