@@ -15,12 +15,15 @@ template ShaHash(BLOCK_SIZE, BLOCK_NUM, ALGO){
     signal input dummy;
     signal output out[ALGO];
 
-    // if (ALGO == 160) {
-    //     component hash160 = Sha1(BLOCK_NUM);
-    //     hash160.in <== in;
-    //     hash160.dummy <== dummy;
-    //     hash160.out ==> out;
-    // }
+    if (ALGO == 160) {
+        component hash160 = Sha1HashChunks(BLOCK_NUM);
+        hash160.in <== in;
+        hash160.dummy <== dummy;
+        hash160.out ==> out;
+        for (var i = 0; i < 160; i++){
+            log(out[i]);
+        }
+    }
     if (ALGO == 224) {
         component hash224 = Sha224HashChunks(BLOCK_NUM);
         hash224.in <== in;

@@ -3,7 +3,9 @@ pragma circom 2.1.6;
 include "constants.circom";
 include "sha1compression.circom";
 
-template Sha1(BLOCK_NUM) {
+template Sha1HashChunks(BLOCK_NUM) {
+    signal input dummy;
+    dummy * dummy === 0;
     signal input in[BLOCK_NUM * 512];
     signal output out[160];
     
@@ -20,6 +22,7 @@ template Sha1(BLOCK_NUM) {
     
     for (i = 0; i < BLOCK_NUM; i++) {
         sha1Compression[i] = Sha1compression();
+        sha1Compression[i].dummy <== dummy;
         
         if (i == 0) {
             for (k = 0; k < 32; k++) {

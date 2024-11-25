@@ -4,8 +4,12 @@ include "./rotate.circom";
 include "../../bitify/comparators.circom";
 include "./f.circom";
 include "./constants.circom";
+include "../../int/arithmetic.circom";
 
 template T(t) {
+    signal input dummy;
+    dummy * dummy === 0;
+
     signal input a[32];
     signal input b[32];
     signal input c[32];
@@ -27,41 +31,29 @@ template T(t) {
         f.d[k] <== d[k];
     }
     
-    component sum_binary = BinSum(32, 5);
+    component sumBinary = BinSum(5, 32);
+    sumBinary.dummy <== dummy;
     var nout = 35; 
     
     for (k = 0; k < 32; k++) {
-        sum_binary.in[0][k] <== rotatel5.out[31 - k];
-        sum_binary.in[1][k] <== f.out[31 - k];
-        sum_binary.in[2][k] <== e[31 - k];
-        sum_binary.in[3][k] <== kT[31 - k];
-        sum_binary.in[4][k] <== w[31 - k];
+        sumBinary.in[0][k] <== rotatel5.out[31 - k];
+        sumBinary.in[1][k] <== f.out[31 - k];
+        sumBinary.in[2][k] <== e[31 - k];
+        sumBinary.in[3][k] <== kT[31 - k];
+        sumBinary.in[4][k] <== w[31 - k];
     }
     
     component sum = Bits2Num(nout);
     for (k = 0; k < nout; k++) {
-        sum.in[k] <== sum_binary.out[k];
+        sum.in[k] <== sumBinary.out[k];
     }
     
     // perform sum modulo 32
-    signal sumModulo;
-    signal quotient;
-    component lessThan = LessThan(33);
-    
-    sumModulo <-- sum.out % 2 ** 32;
-    quotient <-- sum.out \ 2 ** 32;
-    
-    lessThan.in[0] <== sumModulo;
-    lessThan.in[1] <== 2 ** 32;
-    
-    sum.out === quotient * 2 ** 32 + sumModulo;
-    1 === lessThan.out;
-    
-    // reconvert to bit array
-    component sumBinaryModulo = Num2Bits(32);
-    sumBinaryModulo.in <== sumModulo;
-    
+    component getLastNBits = GetLastNBits(32);
+    getLastNBits.in <== sum.out;
+
     for (k = 0; k < 32; k++) {
-        out[k] <== sumBinaryModulo.out[31 - k];
+        out[k] <== getLastNBits.out[31 - k];
     }
+  
 }
