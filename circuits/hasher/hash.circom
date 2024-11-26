@@ -9,8 +9,9 @@ include "./sha2/sha224/sha224HashBits.circom";
 include "./sha2/sha256/sha256HashBits.circom";
 include "./sha2/sha384/sha384HashBits.circom";
 include "./sha2/sha512/sha512HashBits.circom";
+include "./poseidon/poseidon.circom";
 
-
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Here is secure implementation of sha-1 and sha-2 hash algoritms.
 // There are two versions of hashers - for bits and chunks
 // Bit implementation do padding by itself, so use it if u don`t understand how padding works.
@@ -24,7 +25,6 @@ include "./sha2/sha512/sha512HashBits.circom";
 // Sha2-256: 256
 // Sha2-384: 384
 // Sha2-512: 512
-//------------------------------------------------------------------------------------------------------------------------------------------------------------
 template ShaHashChunks(BLOCK_NUM, ALGO){
 
     assert(ALGO == 160 || ALGO == 224 || ALGO == 256 || ALGO == 384 || ALGO == 512);
@@ -109,4 +109,16 @@ template ShaHashBits(LEN, ALGO){
         hash512.dummy <== dummy;
         hash512.out ==> out;
     }
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+template PoseidonHash(LEN){
+    signal input in[LEN];
+    signal input dummy;
+    signal output out;
+
+    component poseidon = Poseidon(LEN);
+    poseidon.in <== in;
+    poseidon.dummy <== dummy;
+    out <== poseidon.out;
 }
