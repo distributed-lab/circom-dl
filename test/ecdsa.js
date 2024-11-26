@@ -160,7 +160,7 @@ async function testVerNum(input1, input2, input3, input4, input5, circuit){
         if (real_result) {
             throw new Error(`Unexpected failure for verification (${input1}, ${input2}), (${input3}, ${input4}) ${input5}.`);
         } else {
-            console.log(`Predicted failure for verification (${input1}, ${input2}), (${input3}, ${input4}) ${input5} not on curve correctly handled.`);
+            console.log(`Predicted failure for verification (${input1}, ${input2}), (${input3}, ${input4}) ${input5} correctly handled.`);
         }
     }
 }
