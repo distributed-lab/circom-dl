@@ -110,11 +110,19 @@ template ShaHashBits(LEN, ALGO){
         hash512.out ==> out;
     }
 }
-//------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Here is secure implementation of Poseidon hash algoritm.
+// LEN in lenght of input vector
+// Poseidon works with vectors, not just nums or bits, so use 1 element arr in case of one number
+// Max LEN is 16, but if u want to connect this to solidity smart contracts, remember that they have only Poseidon(6)
+// U can use this for verification: https://poseidon-hash.online/
 template PoseidonHash(LEN){
+    assert (LEN <= 16);
+    assert (LEN > 0);
     signal input in[LEN];
     signal input dummy;
+    dummy * dummy === 0;
     signal output out;
 
     component poseidon = Poseidon(LEN);

@@ -7,6 +7,8 @@ const wasm_tester = require("circom_tester").wasm;
 const crypto = require('crypto');
 const { read } = require("fs");
 
+
+
 function hexToBitArray(hexStr) {
     const bitArray = [];
     for (const hexChar of hexStr) {
@@ -261,6 +263,21 @@ async function testHash512Bits(input1, circuit){
     assert(circuit_result == real_result, `${real_result} != ${circuit_result}`);
 }
 
+async function testPoseidon(input1, circuit){
+
+    const hash_0 = 19014214495641488759237505126948346942972912379615652741039992445865937985820n
+    const hash_0_1 = 12583541437132735734108669866114103169564651237895298778035846191048104863326n
+
+    const w = await circuit.calculateWitness({in: input1, dummy: 0n}, true);
+    let circuit_result = w.slice(1, 1+1)
+    if (input1[0] == 0n && input1[1] == 1n){
+        assert(circuit_result == hash_0_1, `${hash_0_1} != ${circuit_result}`);
+    } else {
+        assert(circuit_result == hash_0, `${hash_0} != ${circuit_result}`);
+    }
+}
+
+
 describe("Hash 160 test", function () {
 
     this.timeout(10000000);
@@ -386,4 +403,27 @@ describe("Hash 512 test", function () {
 });
 
 
+describe("Poseidon test", function () {
+
+    this.timeout(10000000);
+    let circuit1;
+    let circuit2;
+
+    before(async () => {
+        circuit1 = await wasm_tester(path.join(__dirname, "circuits", "hasher", "poseidon1.circom"));
+    });
+
+    before(async () => {
+        circuit2 = await wasm_tester(path.join(__dirname, "circuits", "hasher", "poseidon2.circom"));
+    });
+
+    it("Poseidon([0])", async function () {
+        await testPoseidon([0n], circuit1);
+    });
+
+    it("Poseidon([0, 1])", async function () {
+        await testPoseidon([0n, 1n], circuit2);
+    })
+
+});
 
