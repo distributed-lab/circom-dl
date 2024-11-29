@@ -532,3 +532,30 @@ function reduce_overflow(n, k, m, N){
 
     return M;
 }
+
+function exp_to_bits(exp){
+    var mul_num = 0;
+    var result_mul_num = 0;
+    var indexes[256];
+    var bits[254];
+
+    var exp_clone = exp;
+    var counter = 0;
+    var result_counter;
+    while (exp > 0){
+        bits[counter] = exp % 2;
+        exp = exp \ 2;
+        if (bits[counter] == 1) {
+            result_mul_num += 1;
+            indexes[result_counter+2] = counter;
+            result_counter += 1;
+        } 
+        mul_num += 1;
+        counter++;
+    }
+    indexes[0] = mul_num - 1;
+    indexes[1] = result_mul_num;
+
+    return indexes;
+
+}

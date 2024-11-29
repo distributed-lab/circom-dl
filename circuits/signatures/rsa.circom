@@ -9,11 +9,11 @@ include "../int/arithmetic.circom";
 // Hashed is hashed message of hash_type algo
 // signature and pubkey - chunked numbers (CHUNK_SIZE, CHUNK_NUMBER)
 // e_bits - Len of bit representation of exponent with 1 highest and lowest bits, other are 0 (2^(e_bits - 1) + 1)
-// default exp = 65537 (e_bits = 17)
+// default exp = 65537
 // use this for CHUNK_NUMBER == 2**n, otherwise error will occure
 // CHUNK_SIZE == 64 cause we hardcode some constants, which will be another for other chunking,
 // so u should understand that in case of changing chunking
-template RsaVerifyPkcs1v15(CHUNK_SIZE, CHUNK_NUMBER, E_BITS, HASH_TYPE) {
+template RsaVerifyPkcs1v15(CHUNK_SIZE, CHUNK_NUMBER, EXP, HASH_TYPE) {
     
     assert(CHUNK_SIZE == 64);
     assert(HASH_TYPE == 256 || HASH_TYPE == 160);
@@ -27,7 +27,7 @@ template RsaVerifyPkcs1v15(CHUNK_SIZE, CHUNK_NUMBER, E_BITS, HASH_TYPE) {
 
     if (HASH_TYPE == 256){
         // signature ** exp mod modulus
-        component pm = PowerMod(CHUNK_SIZE, CHUNK_NUMBER, E_BITS);
+        component pm = PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP);
         pm.dummy <== dummy;
         for (var i = 0; i < CHUNK_NUMBER; i++) {
             pm.base[i] <== signature[i];
@@ -72,7 +72,7 @@ template RsaVerifyPkcs1v15(CHUNK_SIZE, CHUNK_NUMBER, E_BITS, HASH_TYPE) {
         }
     }
     if (HASH_TYPE == 160) {
-        component pm = PowerMod(CHUNK_SIZE, CHUNK_NUMBER, E_BITS);
+        component pm = PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP);
         pm.dummy <== dummy;
         for (var i  = 0; i < CHUNK_NUMBER; i++) {
             pm.base[i] <== signature[i];
@@ -111,9 +111,9 @@ template RsaVerifyPkcs1v15(CHUNK_SIZE, CHUNK_NUMBER, E_BITS, HASH_TYPE) {
 // hashed is hashed message of hash_type algo
 // signature and pubkey - chunked numbers (CHUNK_SIZE, CHUNK_NUMBER)
 // e_bits - Len of bit representation of exponent with 1 highest and lowest bits, other are 0 (2^(e_bits - 1) + 1)
-// default exp = 65537 (e_bits = 17)
+// default exp = 65537
 // use this for CHUNK_NUMBER != 2**n, otherwise use previous
-template RsaVerifyPkcs1v15NonOptimised(CHUNK_SIZE, CHUNK_NUMBER, E_BITS, HASH_TYPE) {
+template RsaVerifyPkcs1v15NonOptimised(CHUNK_SIZE, CHUNK_NUMBER, EXP, HASH_TYPE) {
 
     assert(CHUNK_SIZE == 64);
     
@@ -125,7 +125,7 @@ template RsaVerifyPkcs1v15NonOptimised(CHUNK_SIZE, CHUNK_NUMBER, E_BITS, HASH_TY
     dummy * dummy === 0;
     
     // signature ** exp mod modulus
-    component pm = PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, E_BITS);
+    component pm = PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, EXP);
     pm.dummy <== dummy;
     for (var i = 0; i < CHUNK_NUMBER; i++) {
         pm.base[i] <== signature[i];

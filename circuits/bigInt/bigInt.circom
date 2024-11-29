@@ -378,13 +378,11 @@ template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-// Computes CHUNK_NUMBER number power with some exp
-// exp = 2 ** (E_BITS - 1) + 1
-// this template created for RSA signature verification purpuses
-// any exp will be added later
+// Computes CHUNK_NUMBER number power with EXP = exponent
+// EXP is default num, not chunked bigInt!!!
 // use for CHUNK_NUMBER == 2**n, otherwise error will occur
-template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, E_BITS) {
-    assert(E_BITS >= 2);
+template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
+    assert(EXP >= 2);
     
     signal input base[CHUNK_NUMBER];
     signal input modulus[CHUNK_NUMBER];
@@ -392,47 +390,59 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, E_BITS) {
     
     signal output out[CHUNK_NUMBER];
     
-    component muls[E_BITS];
+    var exp_process[256] = exp_to_bits(EXP);
     
-    for (var i = 0; i < E_BITS; i++) {
-        
+    component muls[exp_process[0]];
+    component resultMuls[exp_process[1] - 1];
+    
+    for (var i = 0; i < exp_process[0]; i++){
         muls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
-        
         muls[i].dummy <== dummy;
-        for (var j = 0; j < CHUNK_NUMBER; j++) {
-            muls[i].in[2][j] <== modulus[j];
+        muls[i].in[2] <== modulus;
+    }
+    
+    for (var i = 0; i < exp_process[1] - 1; i++){
+        resultMuls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
+        resultMuls[i].dummy <== dummy;
+        resultMuls[i].in[2] <== modulus;
+    }
+    
+    muls[0].in[0] <== base;
+    muls[0].in[1] <== base;
+    
+    for (var i = 1; i < exp_process[0]; i++){
+        muls[i].in[0] <== muls[i - 1].out;
+        muls[i].in[1] <== muls[i - 1].out;
+    }
+    
+    for (var i = 0; i < exp_process[1] - 1; i++){
+        if (i == 0){
+            if (exp_process[i + 2] == 0){
+                resultMuls[i].in[0] <== base;
+            } else {
+                resultMuls[i].in[0] <== muls[exp_process[i + 2] - 1].out;
+            }
+            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
+        }
+        else {
+            resultMuls[i].in[0] <== resultMuls[i - 1].out;
+            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
         }
     }
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++) {
-        muls[0].in[0][i] <== base[i];
-        muls[0].in[1][i] <== base[i];
-    }
-    
-    for (var i = 1; i < E_BITS - 1; i++) {
-        for (var j = 0; j < CHUNK_NUMBER; j++) {
-            muls[i].in[0][j] <== muls[i - 1].out[j];
-            muls[i].in[1][j] <== muls[i - 1].out[j];
-        }
-    }
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++) {
-        muls[E_BITS - 1].in[0][i] <== base[i];
-        muls[E_BITS - 1].in[1][i] <== muls[E_BITS - 2].out[i];
-    }
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++) {
-        out[i] <== muls[E_BITS - 1].out[i];
+
+    if (exp_process[1] == 1){
+        out <== muls[exp_process[0] - 1].out;
+    } else {
+        out <== resultMuls[exp_process[1] - 2].out;
     }
 }
 
-// Computes CHUNK_NUMBER number power with some exp
-// exp = 2 ** (E_BITS - 1) + 1
-// this template created for RSA signature verification purpuses
-// any exp will be added later
+// Computes CHUNK_NUMBER number power with EXP = exponent
+// EXP is default num, not chunked bigInt!!!
 // use for CHUNK_NUMBER!= 2**n, otherwise use "PowerMod"
-template PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, E_BITS) {
-    assert(E_BITS >= 2);
+template PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
+
+    assert(EXP >= 2);
     
     signal input base[CHUNK_NUMBER];
     signal input modulus[CHUNK_NUMBER];
@@ -440,37 +450,50 @@ template PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, E_BITS) {
     
     signal output out[CHUNK_NUMBER];
     
-    component muls[E_BITS];
+    var exp_process[256] = exp_to_bits(EXP);
     
-    for (var i = 0; i < E_BITS; i++) {
-        
+    component muls[exp_process[0]];
+    component resultMuls[exp_process[1] - 1];
+    
+    for (var i = 0; i < exp_process[0]; i++){
         muls[i] = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
-        
         muls[i].dummy <== dummy;
-        for (var j = 0; j < CHUNK_NUMBER; j++) {
-            muls[i].in[2][j] <== modulus[j];
+        muls[i].in[2] <== modulus;
+    }
+    
+    for (var i = 0; i < exp_process[1] - 1; i++){
+        resultMuls[i] = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+        resultMuls[i].dummy <== dummy;
+        resultMuls[i].in[2] <== modulus;
+    }
+    
+    muls[0].in[0] <== base;
+    muls[0].in[1] <== base;
+    
+    for (var i = 1; i < exp_process[0]; i++){
+        muls[i].in[0] <== muls[i - 1].out;
+        muls[i].in[1] <== muls[i - 1].out;
+    }
+    
+    for (var i = 0; i < exp_process[1] - 1; i++){
+        if (i == 0){
+            if (exp_process[i + 2] == 0){
+                resultMuls[i].in[0] <== base;
+            } else {
+                resultMuls[i].in[0] <== muls[exp_process[i + 2] - 1].out;
+            }
+            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
+        }
+        else {
+            resultMuls[i].in[0] <== resultMuls[i - 1].out;
+            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
         }
     }
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++) {
-        muls[0].in[0][i] <== base[i];
-        muls[0].in[1][i] <== base[i];
-    }
-    
-    for (var i = 1; i < E_BITS - 1; i++) {
-        for (var j = 0; j < CHUNK_NUMBER; j++) {
-            muls[i].in[0][j] <== muls[i - 1].out[j];
-            muls[i].in[1][j] <== muls[i - 1].out[j];
-        }
-    }
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++) {
-        muls[E_BITS - 1].in[0][i] <== base[i];
-        muls[E_BITS - 1].in[1][i] <== muls[E_BITS - 2].out[i];
-    }
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++) {
-        out[i] <== muls[E_BITS - 1].out[i];
+
+    if (exp_process[1] == 1){
+        out <== muls[exp_process[0] - 1].out;
+    } else {
+        out <== resultMuls[exp_process[1] - 2].out;
     }
 }
 

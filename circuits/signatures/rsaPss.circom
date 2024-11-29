@@ -10,13 +10,12 @@ include "../hasher/hash.circom";
 // hash_type is algo hash algo for mgf1 mask generation
 // there is no assert for CHUNK_SIZE == 64 and it may work with other chunking, but this one wasn`t tested, so better use 64
 // signature and pubkey - chunked numbers (CHUNK_SIZE, CHUNK_NUMBER)
-// e_bits - Len of bit representation of exponent with 1 highest and lowest bits, other are 0 (2^(e_bits - 1) + 1)
-// default exp = 65537 (e_bits = 17)
+// default exp = 65537 
 // SALT_LEN is salt lenght in bytes! (NOT IN BITES LIKE HASH_TYPE!)
 // This is because salt len can`t be % 8 != 0 so we use bytes len (8 bites) 
 // For now, only HASH_TYPE == 384 && SALT_LEN == 48,  HASH_TYPE == 256 && SALT_LEN == 64, HASH_TYPE == 256 && SALT_LEN == 32 cases supported
 // use this for CHUNK_NUMBER == 2**n, otherwise error will occur
-template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, E_BITS, HASH_TYPE){
+template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
     
     assert((HASH_TYPE == 384 && SALT_LEN == 48) || (HASH_TYPE == 256 && SALT_LEN == 64) || (HASH_TYPE == 256 && SALT_LEN == 32));
     
@@ -40,7 +39,7 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, E_BITS, HASH_TYPE){
     component powerMod;
     var isPowerOfTwo = 0;
 
-    powerMod = PowerMod(CHUNK_SIZE, CHUNK_NUMBER, E_BITS);
+    powerMod = PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP);
 
     powerMod.base <== signature;
     powerMod.modulus <== pubkey;
@@ -233,7 +232,7 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, E_BITS, HASH_TYPE){
 // This is because salt len can`t be % 8 != 0 so we use bytes len (8 bites) 
 // For now, only HASH_TYPE == 384 && SALT_LEN == 48,  HASH_TYPE == 256 && SALT_LEN == 64, HASH_TYPE == 256 && SALT_LEN == 32 cases supported
 // use this for CHUNK_NUMBER != 2**n, otherwise use previous
-template VerifyRsaPssSigNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, E_BITS, HASH_TYPE){
+template VerifyRsaPssSigNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
     
     assert((HASH_TYPE == 384 && SALT_LEN == 48) || (HASH_TYPE == 256 && SALT_LEN == 64) || (HASH_TYPE == 256 && SALT_LEN == 32));
     
@@ -257,7 +256,7 @@ template VerifyRsaPssSigNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, E_BITS,
     component powerMod;
     var isPowerOfTwo = 0;
 
-    powerMod = PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, E_BITS);
+    powerMod = PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, EXP);
 
     powerMod.base <== signature;
     powerMod.modulus <== pubkey;
