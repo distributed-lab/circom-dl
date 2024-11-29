@@ -13,7 +13,7 @@ include "./get.circom";
 // Operation for any Weierstrass prime-field eliptic curve (for now 256-bit)
 // A, B, P in every function - params of needed curve, chunked the same as every other chunking (64 4 for now)
 // Example usage of operation (those are params for secp256k1 ec):
-// EllipticCurveDouble(64, 4, [0,0,0,0], [7,0,0,0], [18446744069414583343, 18446744073709551615, 18446744073709551615, 18446744073709551615]);
+// EllipticCurveDoubleOptimised(64, 4, [0,0,0,0], [7,0,0,0], [18446744069414583343, 18446744073709551615, 18446744073709551615, 18446744073709551615]);
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // To add a new curve u should do next steps:
 // Get curve params(A, B, P) in chunked representation
@@ -22,7 +22,7 @@ include "./get.circom";
 // It will create circom file, rename it as u want(recommended {curve name}pows.circom), put it in ./powers folder, and add import to it here:
 // include "./powers/{curve name}pows.circom";
 // rename get_g_pow_stride8_table func in this file to anything (recommended "get_g_pow_stride8_table_{curve_name}")
-// in template "EllipicCurveScalarGeneratorMultiplication" add new if for getting powers
+// in template "EllipicCurveScalarGeneratorMultiplicationOptimised" add new if for getting powers
 // var powers[parts][2 ** STRIDE][2][CHUNK_NUMBER];
 // if (P[0] == 18446744069414583343 && P[1] == 18446744073709551615 && P[2] == 18446744073709551615 && P[3] == 18446744073709551615){ // change to your P chunking
     //         powers = get_g_pow_stride8_table_secp256k1(CHUNK_SIZE, CHUNK_NUMBER);                                                      // change to your func name
@@ -225,14 +225,14 @@ template EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WIND
     
     for (var i = 2; i < PRECOMPUTE_NUMBER; i++){
         if (i % 2 == 0){
-            doublers[i \ 2 - 1] = EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+            doublers[i \ 2 - 1] = EllipticCurveDoubleOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
             doublers[i \ 2 - 1].in <== out[i \ 2];
             doublers[i \ 2 - 1].dummy <== dummy;
             doublers[i \ 2 - 1].out ==> out[i];
             
         }
         else {
-            adders[i \ 2 - 1] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+            adders[i \ 2 - 1] = EllipticCurveAddOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
             adders[i \ 2 - 1].in1 <== out[1];
             adders[i \ 2 - 1].in2 <== out[i - 1];
             adders[i \ 2 - 1].dummy <== dummy;
@@ -247,7 +247,7 @@ template EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WIND
 // Check if given point lies on curve
 // y ** 2 % p === (x ** 3 + a * x + b) % p
 // fail if point isn`t on curve, otherwise pass
-template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+template PointOnCurveOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     assert(CHUNK_SIZE == 64);
     
@@ -305,7 +305,7 @@ template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 // x3 = λ * λ - 2 * x
 // y3 = λ * (x - x3) - y
 // calculate doubled point
-template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+template EllipticCurveDoubleOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in[2][CHUNK_NUMBER];
     signal output out[2][CHUNK_NUMBER];
     signal input dummy;
@@ -422,7 +422,7 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 // x3 = λ * λ - x1 - x2
 // y3 = λ * (x1 - x3) - y1
 // calculate sum of 2 points
-template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+template EllipticCurveAddOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     signal input in1[2][CHUNK_NUMBER];
     signal input in2[2][CHUNK_NUMBER];
@@ -543,7 +543,7 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 // Other curves will be added by ourself soon
 // Will fail if scalar == 0, don`t do it
 // Complexity is 31 additions
-template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+template EllipicCurveScalarGeneratorMultiplicationOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
     
@@ -651,7 +651,7 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
     
     
     for (var i = 0; i < parts - 1; i++){
-        adders[i] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        adders[i] = EllipticCurveAddOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
         adders[i].dummy <== dummy;
         isDummyLeft[i] = IsEqual();
         isDummyRight[i] = IsEqual();
@@ -784,7 +784,7 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
     res[0] <== precomputed[0];
     
     for (var i = 0; i < CHUNK_NUMBER * CHUNK_SIZE; i += WINDOW_SIZE){
-        adders[i \ WINDOW_SIZE] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        adders[i \ WINDOW_SIZE] = EllipticCurveAddOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
         bits2Num[i \ WINDOW_SIZE] = Bits2Num(WINDOW_SIZE);
         for (var j = 0; j < WINDOW_SIZE; j++){
             bits2Num[i \ WINDOW_SIZE].in[j] <== scalarBits[i + (WINDOW_SIZE - 1) - j];
@@ -796,7 +796,7 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
         
         if (i != 0){
             for (var j = 0; j < WINDOW_SIZE; j++){
-                doublers[i + j - WINDOW_SIZE] = EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+                doublers[i + j - WINDOW_SIZE] = EllipticCurveDoubleOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
                 doublers[i + j - WINDOW_SIZE].dummy <== dummy;
                 
                 if (j == 0){
@@ -905,7 +905,7 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
 // To generate table for input, use script located in "../helpers/generate_mult_input.py"
 // Change lines 127..132 to get input
 // Note that Gx and Gy is your point, not generator (U can simply use generator multiplication without generating other table for generator)
-template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+template EllipicCurveScalarPrecomputeMultiplicationOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
     var STRIDE = 8;
@@ -1014,7 +1014,7 @@ template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A,
     
     
     for (var i = 0; i < parts - 1; i++){
-        adders[i] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        adders[i] = EllipticCurveAddOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
         adders[i].dummy <== dummy;
         isDummyLeft[i] = IsEqual();
         isDummyRight[i] = IsEqual();
@@ -1496,7 +1496,7 @@ template EllipicCurveScalarGeneratorMultiplicationNonOptimised(CHUNK_SIZE, CHUNK
     
     
     for (var i = 0; i < parts - 1; i++){
-        adders[i] = EllipticCurveAddNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        adders[i] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
         adders[i].dummy <== dummy;
         isDummyLeft[i] = IsEqual();
         isDummyRight[i] = IsEqual();
@@ -1686,7 +1686,7 @@ template EllipicCurveScalarPrecomputeMultiplicationNonOptimised(CHUNK_SIZE, CHUN
     
     
     for (var i = 0; i < parts - 1; i++){
-        adders[i] = EllipticCurveAddNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        adders[i] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
         adders[i].dummy <== dummy;
         isDummyLeft[i] = IsEqual();
         isDummyRight[i] = IsEqual();
@@ -1748,11 +1748,124 @@ template EllipicCurveScalarPrecomputeMultiplicationNonOptimised(CHUNK_SIZE, CHUN
         }
     }
     out <== resultingPoints[parts - 2];
-
+    
     for (var i = 0; i < 6; i++){
         log(out[0][i]);
     }
     for (var i = 0; i < 6; i++){
         log(out[1][i]);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Here are autodetect templates, use them
+
+template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+    signal input in[2][CHUNK_NUMBER];
+    signal input dummy;
+    dummy * dummy === 0;
+    
+    if (CHUNK_NUMBER == 4 && CHUNK_SIZE == 64){
+        component pointOnCurveOptimised = PointOnCurveOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        pointOnCurveOptimised.in <== in;
+        pointOnCurveOptimised.dummy <== dummy;
+    } else {
+        component pointOnCurveNonOptimised = PointOnCurveNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        pointOnCurveNonOptimised.in <== in;
+        pointOnCurveNonOptimised.dummy <== dummy;
+    }
+    
+}
+
+template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+    signal input in[2][CHUNK_NUMBER];
+    signal input dummy;
+    dummy * dummy === 0;
+    signal output out[2][CHUNK_NUMBER];
+    
+    if (CHUNK_NUMBER == 4 && CHUNK_SIZE == 64){
+        component ecDoubleOptimised = EllipticCurveDoubleOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        ecDoubleOptimised.in <== in;
+        ecDoubleOptimised.dummy <== dummy;
+        out <== ecDoubleOptimised.out;
+    } else {
+        component ecDoubleNonOptimised = EllipticCurveDoubleNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        ecDoubleNonOptimised.in <== in;
+        ecDoubleNonOptimised.dummy <== dummy;
+        out <== ecDoubleNonOptimised.out;
+    }
+}
+
+template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+    signal input in1[2][CHUNK_NUMBER];
+    signal input in2[2][CHUNK_NUMBER];
+    signal input dummy;
+    dummy * dummy === 0;
+    signal output out[2][CHUNK_NUMBER];
+    
+    if (CHUNK_NUMBER == 4 && CHUNK_SIZE == 64){
+        component ecAddOptimised = EllipticCurveAddOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        ecAddOptimised.in1 <== in1;
+        ecAddOptimised.in2 <== in2;
+        ecAddOptimised.dummy <== dummy;
+        out <== ecAddOptimised.out;
+    } else {
+        component ecAddNonOptimised = EllipticCurveAddNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        ecAddNonOptimised.in1 <== in1;
+        ecAddNonOptimised.in2 <== in2;
+        ecAddNonOptimised.dummy <== dummy;
+        out <== ecAddNonOptimised.out;
+    }
+}
+
+template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+    signal input scalar[CHUNK_NUMBER];
+    signal input dummy;
+    dummy * dummy === 0;
+    signal output out[2][CHUNK_NUMBER];
+    
+    if (CHUNK_SIZE == 64 && CHUNK_NUMBER == 4){
+        component ecGenMultOptimised = EllipicCurveScalarGeneratorMultiplicationOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        ecGenMultOptimised.scalar <== scalar;
+        ecGenMultOptimised.dummy <== dummy;
+        out <== ecGenMultOptimised.out;
+    } else {
+        component ecGenMultNonOptimised = EllipicCurveScalarGeneratorMultiplicationNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        ecGenMultNonOptimised.scalar <== scalar;
+        ecGenMultNonOptimised.dummy <== dummy;
+        out <== ecGenMultNonOptimised.out;
+    }
+    
+    
+    
+}
+
+template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
+    var STRIDE = 8;
+    var parts = CHUNK_NUMBER * CHUNK_SIZE \ STRIDE;
+    
+    signal input scalar[CHUNK_NUMBER];
+    signal input dummy;
+    signal input in[2][CHUNK_NUMBER];
+    signal input powers[parts][2 ** STRIDE][2][CHUNK_NUMBER];
+    signal output out[2][CHUNK_NUMBER];
+    
+    dummy * dummy === 0;
+    
+    if (CHUNK_SIZE == 64 && CHUNK_NUMBER == 4){
+        component scalarMultOptimised = EllipicCurveScalarPrecomputeMultiplicationOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        scalarMultOptimised.in <== in;
+        scalarMultOptimised.scalar <== scalar;
+        scalarMultOptimised.powers <== powers;
+        scalarMultOptimised.dummy <== dummy;
+        out <== scalarMultOptimised.out;
+    } else {
+        component scalarMultNonOptimised = EllipicCurveScalarPrecomputeMultiplicationNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+        scalarMultNonOptimised.in <== in;
+        scalarMultNonOptimised.scalar <== scalar;
+        scalarMultNonOptimised.powers <== powers;
+        scalarMultNonOptimised.dummy <== dummy;
+        out <== scalarMultNonOptimised.out;
+
     }
 }
