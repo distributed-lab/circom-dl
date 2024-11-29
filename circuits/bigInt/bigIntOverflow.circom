@@ -227,101 +227,6 @@ template BigModOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS, OVE
     bigMod.div ==> div;
 }
 
-// get mod of number with CHUNK_NUMBER_BASE chunks by modulus with CHUNK_NUMBER_MODULUS chunks
-// THIS IS UNSECURE, NEVER USE IT IN PRODUCTION!!!
-// a / b = c;
-// a % b = d;
-// p - circom field
-// first check: 
-// a % p === (b * c + d) % p
-// second check: 
-// a < b * (c + 1)
-// a = bc + d so bc + d < bc + b so d < b
-// Hacking algo:
-// I want to get (d - 1) instead of d
-// Second check will pass
-// a % p === (b * c_1 + d - 1) % p === (b * c + d) % p
-// (b * c) % p === (b * c) % p + b * (c - c1) % p - 1
-// 1 === b * (c - c1) % p
-// (b ** -1) % p === (c - c1) % p
-// c1 = (c + (b ** -1) % p) % p
-// This is unsecure, we can put any value in mod while it is less than modulus
-template BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS, OVERFLOW_SHIFT){
-    
-    assert(CHUNK_NUMBER_BASE <= 253);
-    assert(CHUNK_NUMBER_MODULUS <= 253);
-    assert(CHUNK_NUMBER_MODULUS <= CHUNK_NUMBER_BASE);
-    
-    signal input base[CHUNK_NUMBER_BASE];
-    signal input modulus[CHUNK_NUMBER_MODULUS];
-    signal input dummy;
-    
-    var CHUNK_NUMBER_DIV = CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS + 1 + OVERFLOW_SHIFT;
-    
-    var reduced[200] = reduce_overflow(CHUNK_SIZE, CHUNK_NUMBER_BASE,CHUNK_NUMBER_BASE + OVERFLOW_SHIFT, base);
-    var based[CHUNK_NUMBER_BASE + 3];
-    
-    for (var i = 0; i < CHUNK_NUMBER_BASE + 3; i++){
-        based[i] = reduced[i];
-    }
-    
-    var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV - 1, based, modulus);
-    
-    signal output div[CHUNK_NUMBER_DIV];
-    signal output mod[CHUNK_NUMBER_MODULUS];
-    
-    for (var i = 0; i < CHUNK_NUMBER_DIV; i++){
-        div[i] <-- long_division[0][i];
-    }
-    
-    for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++){
-        mod[i] <-- long_division[1][i];
-    }
-    
-    component multChecks;
-    if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
-        multChecks = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
-        
-        multChecks.in1 <== div;
-        multChecks.in2 <== modulus;
-        multChecks.dummy <== dummy;
-    } else {
-        multChecks = BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
-        
-        multChecks.in2 <== div;
-        multChecks.in1 <== modulus;
-        multChecks.dummy <== dummy;
-    }
-    
-    
-    component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER_MODULUS);
-    
-    greaterThan.in[0] <== modulus;
-    greaterThan.in[1] <== mod;
-    greaterThan.out === 1;
-    
-    //div * modulus + mod === base
-    
-    component bigAddCheck = BigAddNonEqual(CHUNK_SIZE, CHUNK_NUMBER_DIV + CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_MODULUS);
-    
-    bigAddCheck.in1 <== multChecks.out;
-    bigAddCheck.in2 <== mod;
-    bigAddCheck.dummy <== dummy;
-    
-    component smartEqual = SmartEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE + 2 + OVERFLOW_SHIFT);
-    smartEqual.in[0] <== bigAddCheck.out;
-    for (var i = 0; i < CHUNK_NUMBER_BASE; i++){
-        smartEqual.in[1][i] <== base[i];
-    }
-    for (var i = 0; i < 2 + OVERFLOW_SHIFT; i++) {
-        smartEqual.in[1][CHUNK_NUMBER_BASE + i] <== 0;
-    }
-    
-    smartEqual.dummy <== dummy;
-    
-    smartEqual.out === 1;
-}
-
 // calculate mod inverse of base with CHUNK_NUMBER_BASE by CHUNK_NUMBER modulus
 // will fall if modulus[-1] == 0
 template BigModInvOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER) {
@@ -357,49 +262,6 @@ template BigModInvOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER) {
     mult.out[0] === 1;
     for (var i = 1; i < CHUNK_NUMBER; i++) {
         mult.out[i] === 0;
-    }
-}
-
-// calculate mod inverse of base with CHUNK_NUMBER_BASE by CHUNK_NUMBER modulus
-// THIS IS UNSECURE, NEVER USE IT IN PRODUCTION!!!
-// Calls unsecure method
-template BigModInvOverflow2(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER, OVERFLOW_SHIFT) {
-    assert(CHUNK_SIZE <= 252);
-    signal input in[CHUNK_NUMBER_BASE];
-    signal input modulus[CHUNK_NUMBER];
-    signal output out[CHUNK_NUMBER];
-
-    signal input dummy;
-    dummy * dummy === 0;
-
-    component reduce = RemoveOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_BASE + 1);
-    reduce.in <== in;
-    reduce.dummy <== dummy;
-
-    var div_res[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER, (CHUNK_NUMBER_BASE + 1 - CHUNK_NUMBER), reduce.out, modulus);
-    var mod[CHUNK_NUMBER];
-    for (var i = 0; i < CHUNK_NUMBER; i++){
-        mod[i] = div_res[1][i];
-    }
-    var inv[200] = mod_inv(CHUNK_SIZE, CHUNK_NUMBER, mod, modulus);
-
-    for (var i = 0; i < CHUNK_NUMBER; i++) {
-        out[i] <-- inv[i];
-    }
-    
-    component mult = BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER);
-    mult.in1 <== in;
-    mult.in2 <== out;
-    mult.dummy <== dummy;
-
-	component bigMod = BigModOverflow2(CHUNK_SIZE, CHUNK_NUMBER_BASE + CHUNK_NUMBER - 1, CHUNK_NUMBER, OVERFLOW_SHIFT + 1);
-	bigMod.base <== mult.out;
-	bigMod.modulus <== modulus;
-	bigMod.dummy <== dummy;
-
-    bigMod.mod[0] === 1;
-    for (var i = 1; i < CHUNK_NUMBER; i++) {
-        bigMod.mod[i] === 0;
     }
 }
 
@@ -549,7 +411,7 @@ template ReducedEqual(CHUNK_SIZE, CHUNK_NUMBER_OLD, CHUNK_NUMBER_NEW){
 // it always uses 3 constraints and allows to always get 1 for equal inputs
 // there is a way to get "collision" and get 1 for non equal chunks, however
 // it almost impossible to get it randomly (almost the same as hash sha-256 collision), but it can be calculated
-// it still doesn`t allowed to put anything that u want at witness and get valid proof, so it shouldn`t affect on security if it is one of many cheks in your circuits
+// it still doesn`t allowed to put anything that u want at witness and get valid proof, so it shouldn`t affect on security if it is one of many cheks in your circuit
 template SmartEqual(CHUNK_SIZE, CHUNK_NUMBER){
 	assert(CHUNK_NUMBER == 0 || CHUNK_NUMBER == 1 || CHUNK_NUMBER == 2 || CHUNK_NUMBER == 3 || CHUNK_NUMBER == 4 || CHUNK_NUMBER == 5 || CHUNK_NUMBER == 6 || CHUNK_NUMBER == 7 || CHUNK_NUMBER == 8 || CHUNK_NUMBER == 9 || CHUNK_NUMBER == 10 || CHUNK_NUMBER == 11 || CHUNK_NUMBER == 12 || CHUNK_NUMBER == 13 || CHUNK_NUMBER == 14 || CHUNK_NUMBER == 15 || CHUNK_NUMBER == 16 || CHUNK_NUMBER == 17 || CHUNK_NUMBER == 18 || CHUNK_NUMBER == 19 || CHUNK_NUMBER == 20 || CHUNK_NUMBER == 21 || CHUNK_NUMBER == 22 || CHUNK_NUMBER == 23 || CHUNK_NUMBER == 24 || CHUNK_NUMBER == 25 || CHUNK_NUMBER == 26 || CHUNK_NUMBER == 27 || CHUNK_NUMBER == 28 || CHUNK_NUMBER == 29 || CHUNK_NUMBER == 30 || CHUNK_NUMBER == 31 || CHUNK_NUMBER == 32 || CHUNK_NUMBER == 33 || CHUNK_NUMBER == 34 || CHUNK_NUMBER == 35 || CHUNK_NUMBER == 36 || CHUNK_NUMBER == 37 || CHUNK_NUMBER == 38 || CHUNK_NUMBER == 39 || CHUNK_NUMBER == 40 || CHUNK_NUMBER == 41 || CHUNK_NUMBER == 42 || CHUNK_NUMBER == 43 || CHUNK_NUMBER == 44 || CHUNK_NUMBER == 45 || CHUNK_NUMBER == 46 || CHUNK_NUMBER == 47 || CHUNK_NUMBER == 48 || CHUNK_NUMBER == 49 || CHUNK_NUMBER == 50 || CHUNK_NUMBER == 51 || CHUNK_NUMBER == 52 || CHUNK_NUMBER == 53 || CHUNK_NUMBER == 54 || CHUNK_NUMBER == 55 || CHUNK_NUMBER == 56 || CHUNK_NUMBER == 57 || CHUNK_NUMBER == 58 || CHUNK_NUMBER == 59 || CHUNK_NUMBER == 60 || CHUNK_NUMBER == 61 || CHUNK_NUMBER == 62 || CHUNK_NUMBER == 63 || CHUNK_NUMBER == 64 || CHUNK_NUMBER == 65 || CHUNK_NUMBER == 66 || CHUNK_NUMBER == 67 || CHUNK_NUMBER == 68 || CHUNK_NUMBER == 69 || CHUNK_NUMBER == 70 || CHUNK_NUMBER == 71 || CHUNK_NUMBER == 72 || CHUNK_NUMBER == 73 || CHUNK_NUMBER == 74 || CHUNK_NUMBER == 75 || CHUNK_NUMBER == 76 || CHUNK_NUMBER == 77 || CHUNK_NUMBER == 78 || CHUNK_NUMBER == 79 || CHUNK_NUMBER == 80 || CHUNK_NUMBER == 81 || CHUNK_NUMBER == 82 || CHUNK_NUMBER == 83 || CHUNK_NUMBER == 84 || CHUNK_NUMBER == 85 || CHUNK_NUMBER == 86 || CHUNK_NUMBER == 87 || CHUNK_NUMBER == 88 || CHUNK_NUMBER == 89 || CHUNK_NUMBER == 90 || CHUNK_NUMBER == 91 || CHUNK_NUMBER == 92 || CHUNK_NUMBER == 93 || CHUNK_NUMBER == 94 || CHUNK_NUMBER == 95 || CHUNK_NUMBER == 96 || CHUNK_NUMBER == 97 || CHUNK_NUMBER == 98 || CHUNK_NUMBER == 99 || CHUNK_NUMBER == 100 || CHUNK_NUMBER == 101 || CHUNK_NUMBER == 102 || CHUNK_NUMBER == 103 || CHUNK_NUMBER == 104 || CHUNK_NUMBER == 105 || CHUNK_NUMBER == 106 || CHUNK_NUMBER == 107 || CHUNK_NUMBER == 108 || CHUNK_NUMBER == 109 || CHUNK_NUMBER == 110 || CHUNK_NUMBER == 111 || CHUNK_NUMBER == 112 || CHUNK_NUMBER == 113 || CHUNK_NUMBER == 114 || CHUNK_NUMBER == 115 || CHUNK_NUMBER == 116 || CHUNK_NUMBER == 117 || CHUNK_NUMBER == 118 || CHUNK_NUMBER == 119 || CHUNK_NUMBER == 120 || CHUNK_NUMBER == 121 || CHUNK_NUMBER == 122 || CHUNK_NUMBER == 123 || CHUNK_NUMBER == 124 || CHUNK_NUMBER == 125 || CHUNK_NUMBER == 126 || CHUNK_NUMBER == 127 || CHUNK_NUMBER == 128 || CHUNK_NUMBER == 129 || CHUNK_NUMBER == 130 || CHUNK_NUMBER == 131 || CHUNK_NUMBER == 132 || CHUNK_NUMBER == 133 || CHUNK_NUMBER == 134 || CHUNK_NUMBER == 135 || CHUNK_NUMBER == 136 || CHUNK_NUMBER == 137 || CHUNK_NUMBER == 138 || CHUNK_NUMBER == 139 || CHUNK_NUMBER == 140 || CHUNK_NUMBER == 141 || CHUNK_NUMBER == 142 || CHUNK_NUMBER == 143 || CHUNK_NUMBER == 144 || CHUNK_NUMBER == 145 || CHUNK_NUMBER == 146 || CHUNK_NUMBER == 147 || CHUNK_NUMBER == 148 || CHUNK_NUMBER == 149 || CHUNK_NUMBER == 150 || CHUNK_NUMBER == 151 || CHUNK_NUMBER == 152 || CHUNK_NUMBER == 153 || CHUNK_NUMBER == 154 || CHUNK_NUMBER == 155 || CHUNK_NUMBER == 156 || CHUNK_NUMBER == 157 || CHUNK_NUMBER == 158 || CHUNK_NUMBER == 159 || CHUNK_NUMBER == 160 || CHUNK_NUMBER == 161 || CHUNK_NUMBER == 162 || CHUNK_NUMBER == 163 || CHUNK_NUMBER == 164 || CHUNK_NUMBER == 165 || CHUNK_NUMBER == 166 || CHUNK_NUMBER == 167 || CHUNK_NUMBER == 168 || CHUNK_NUMBER == 169 || CHUNK_NUMBER == 170 || CHUNK_NUMBER == 171 || CHUNK_NUMBER == 172 || CHUNK_NUMBER == 173 || CHUNK_NUMBER == 174 || CHUNK_NUMBER == 175 || CHUNK_NUMBER == 176 || CHUNK_NUMBER == 177 || CHUNK_NUMBER == 178 || CHUNK_NUMBER == 179 || CHUNK_NUMBER == 180 || CHUNK_NUMBER == 181 || CHUNK_NUMBER == 182 || CHUNK_NUMBER == 183 || CHUNK_NUMBER == 184 || CHUNK_NUMBER == 185 || CHUNK_NUMBER == 186 || CHUNK_NUMBER == 187 || CHUNK_NUMBER == 188 || CHUNK_NUMBER == 189 || CHUNK_NUMBER == 190 || CHUNK_NUMBER == 191);
 	signal input in[2][CHUNK_NUMBER];
