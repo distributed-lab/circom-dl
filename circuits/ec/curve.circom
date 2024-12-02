@@ -5,6 +5,7 @@ include "../bigInt/bigIntFunc.circom";
 include "./powers/secp256k1pows.circom";
 include "./powers/brainpoolP256r1pows.circom";
 include "./powers/brainpoolP384r1pows.circom";
+include "./powers/p256pows.circom";
 include "../bitify/bitify.circom";
 include "../bitify/comparators.circom";
 include "../int/arithmetic.circom";
@@ -563,6 +564,9 @@ template EllipicCurveScalarGeneratorMultiplicationOptimised(CHUNK_SIZE, CHUNK_NU
     }
     if (P[0] == 2311270323689771895 && P[1] == 7943213001558335528 && P[2] == 4496292894210231666 && P[3] == 12248480212390422972){
         powers = get_g_pow_stride8_table_brainpoolP256r1(CHUNK_SIZE, CHUNK_NUMBER);
+    }
+    if (P[0] == 18446744073709551615 && P[1] == 4294967295 && P[2] == 0 && P[3] == 18446744069414584321) {
+        powers = get_g_pow_stride8_table_p256(CHUNK_SIZE, CHUNK_NUMBER);
     }
     
     component num2bits[CHUNK_NUMBER];

@@ -1,11 +1,11 @@
 import math
 import sys
 
-P = 0x8cb91e82a3386d280f5d6f7e50e641df152f7109ed5456b412b1da197fb71123acd3a729901d1a71874700133107ec53
-A = 0x7bc382c63d8c150c3c72080ace05afa0c2bea28e4fb22787139165efba91f90f8aa5814a503ad4eb04a8c7dd22ce2826
-B = 0x4a8c7dd22ce28268b39b55416f0447c2fb77de107dcd2a62e880ea53eeb62d57cb4390295dbc9943ab78696fa504c11
-Gx = 0x1d1c64f068cf45ffa2a63a81b7c13f6b8847a3e77ef14fe3db7fcafe0cbd10e8e826e03436d646aaef87b2e247d4af1e
-Gy = 0x8abe1d7520f9c2a45cb1eb8e95cfd55262b70b29feec5864e19c054ff99129280e4646217791811142820341263c5315
+P = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff
+A = 0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc
+B = 0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b
+Gx = 0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296 
+Gy = 0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5
 
 def egcd(a, b):
     if a == 0:
@@ -137,7 +137,7 @@ def get_ecdsa_func_str(n, k, stride_list):
 
 def write_to_file():
     stride_list = [8]
-    ecdsa_func_str = get_ecdsa_func_str(64, 6, stride_list)
+    ecdsa_func_str = get_ecdsa_func_str(64, 4, stride_list)
     with open('./tmp.circom', 'w') as file:
         file.write(ecdsa_func_str)
 
