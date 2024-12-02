@@ -8,12 +8,12 @@ m2.circom
 dev
 dev.*
 tools
-circuits/hasher/*
 circuits/babyjubjub/*
+circuits/matrix/*
 test/circuits/babyjubjub/*
 test/montogomery.js
 input*.json
-tmp.circom
+tmp*.circom
 tmp.txt
 bigIntPredefined.circom
 .DS_STORE
