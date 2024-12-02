@@ -9,7 +9,6 @@ dev
 dev.*
 tools
 circuits/babyjubjub/*
-circuits/matrix/*
 test/circuits/babyjubjub/*
 test/montogomery.js
 input*.json
