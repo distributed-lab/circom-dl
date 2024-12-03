@@ -6,6 +6,7 @@ include "./powers/secp256k1pows.circom";
 include "./powers/brainpoolP256r1pows.circom";
 include "./powers/brainpoolP384r1pows.circom";
 include "./powers/p256pows.circom";
+include "./powers/p384pows.circom";
 include "../bitify/bitify.circom";
 include "../bitify/comparators.circom";
 include "../int/arithmetic.circom";
@@ -18,16 +19,18 @@ include "./get.circom";
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // To add a new curve u should do next steps:
 // Get curve params(A, B, P) in chunked representation
-// Add new if for generator, order and dummy point to ./"get.circom" for your params with same chunking (use 64 4 for now)
-// Change params at 4..8 lines in "../../helpers/generate_pow_table_for_curve.py" for your curve params, then execute script
-// It will create circom file, rename it as u want(recommended {curve name}pows.circom), put it in ./powers folder, and add import to it here:
+// Change params at 1..8 lines in "../../helpers/generate_get_for_new_curve.py" for your curve params, then execute script from root, this will update ./get.circom file
+// DON`T USE FOR ALREADY ADDED CURVE, THIS WILL LEAD TO ERROR!!!!!
+// Script also will not work for new chunking (for now 64 4 and 64 6), add first one by yourself 
+// (truly, this is actual not for whole chunking, but for chunk_number, chunk_size doesn`t matter, just check for asserts in templates if u need to add an other one)
+// Change params at 4..8 lines in "../../helpers/generate_pow_table_for_curve.py" for your curve params, then execute script from root, this will create file in ./powers
+// Add import to it here:
 // include "./powers/{curve name}pows.circom";
-// rename get_g_pow_stride8_table func in this file to anything (recommended "get_g_pow_stride8_table_{curve_name}")
-// in template "EllipicCurveScalarGeneratorMultiplicationOptimised" add new if for getting powers
+// in template "EllipicCurveScalarGeneratorMultiplicationOptimised" for 64 4 chunking or "EllipicCurveScalarGeneratorMultiplicationNonOptimised" for other add new if for getting powers
 // var powers[parts][2 ** STRIDE][2][CHUNK_NUMBER];
 // if (P[0] == 18446744069414583343 && P[1] == 18446744073709551615 && P[2] == 18446744073709551615 && P[3] == 18446744073709551615){ // change to your P chunking
-    //         powers = get_g_pow_stride8_table_secp256k1(CHUNK_SIZE, CHUNK_NUMBER);                                                      // change to your func name
-    // }
+//     powers = get_g_pow_stride8_table_secp256k1(CHUNK_SIZE, CHUNK_NUMBER);                                                      // change to your func name
+// }
 // Now u can succesfully execute all functions for your curve
 // EllipicCurveScalarPrecomputeMultiplication still needs precomputed table
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1400,17 +1403,12 @@ template EllipicCurveScalarGeneratorMultiplicationNonOptimised(CHUNK_SIZE, CHUNK
     
     dummy * dummy === 0;
     var powers[parts][2 ** STRIDE][2][CHUNK_NUMBER];
-    if (CHUNK_NUMBER == 4){
-        if (P[0] == 18446744069414583343 && P[1] == 18446744073709551615 && P[2] == 18446744073709551615 && P[3] == 18446744073709551615){
-            powers = get_g_pow_stride8_table_secp256k1(CHUNK_SIZE, CHUNK_NUMBER);
-        }
-        if (P[0] == 2311270323689771895 && P[1] == 7943213001558335528 && P[2] == 4496292894210231666 && P[3] == 12248480212390422972){
-            powers = get_g_pow_stride8_table_brainpoolP256r1(CHUNK_SIZE, CHUNK_NUMBER);
-        }
-    }
     if (CHUNK_NUMBER == 6){
         if (P[0] == 9747760000893709395 && P[1] == 12453481191562877553 && P[2] == 1347097566612230435 && P[3] == 1526563086152259252 && P[4] == 1107163671716839903 && P[5] == 10140169582434348328){
             powers = get_g_pow_stride8_table_brainpoolP384r1(CHUNK_SIZE, CHUNK_NUMBER);
+        }
+        if (P[0] == 4294967295 && P[1] == 18446744069414584320 && P[2] == 18446744073709551614 && P[3] == 18446744073709551615 && P[4] == 18446744073709551615 && P[5] == 18446744073709551615 ){
+            powers = get_g_pow_stride8_table_p384(CHUNK_SIZE, CHUNK_NUMBER);
         }
     }
     

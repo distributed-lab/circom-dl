@@ -1,11 +1,11 @@
 import math
 import sys
 
-P = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff
-A = 0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc
-B = 0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b
-Gx = 0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296 
-Gy = 0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5
+P = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff
+A = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000fffffffc
+B = 0xb3312fa7e23ee7e4988e056be3f82d19181d9c6efe8141120314088f5013875ac656398d8a2ed19d2a85c8edd3ec2aef
+Gx = 0xaa87ca22be8b05378eb1c71ef320ad746e1d3b628ba79b9859f741e082542a385502f25dbf55296c3a545e3872760ab7
+Gy = 0x3617de4a96262c6f5d9e98bf9292dc29f8f41dbd289a147ce9da3113b5f0b8c00a60b1ce1d7e819d7a431d7c90ea0e5f
 
 def egcd(a, b):
     if a == 0:
@@ -85,11 +85,11 @@ def get_g_pow_val(g_pows, exp):
     return curr_sum
 
 
-def get_cache_str(n, k, stride):
+def get_cache_str(n, k, stride, curve_name):
     num_strides = math.ceil(n * k / stride)
     stride_cache_size = 2 ** stride
     ret_str = '''
-function get_g_pow_stride{}_table(n, k) '''.format(stride)
+function get_g_pow_stride{stride}_table_{curve}(n, k) '''.format(stride = stride, curve = curve_name)
     ret_str = ret_str + '{'
     ret_str = ret_str + '''
     assert(n == {} && k == {});
@@ -126,19 +126,21 @@ function get_g_pow_stride{}_table(n, k) '''.format(stride)
     return ret_str
 
 
-def get_ecdsa_func_str(n, k, stride_list):
+def get_ecdsa_func_str(n, k, stride_list, curve_name):
     ret_str = '''pragma circom 2.1.6;
 '''
     for stride in stride_list:
-        cache_str = get_cache_str(n, k, stride)
+        cache_str = get_cache_str(n, k, stride, curve_name)
         ret_str = ret_str + cache_str
     return ret_str
 
 
-def write_to_file():
+def write_to_file(curve_name):
     stride_list = [8]
-    ecdsa_func_str = get_ecdsa_func_str(64, 4, stride_list)
-    with open('./tmp.circom', 'w') as file:
+    ecdsa_func_str = get_ecdsa_func_str(64, 6, stride_list, curve_name)
+    with open('./circuits/ec/powers/{curve}pows.circom'.format(curve = curve_name), 'w') as file:
         file.write(ecdsa_func_str)
 
-write_to_file()
+#RUN FROM ROOT 
+curve_name = "p384"
+write_to_file(curve_name)
