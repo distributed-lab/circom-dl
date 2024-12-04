@@ -9,6 +9,7 @@ Currently, it supports:
     - brainpoolP384r1
     - secp256r1
     - secp256k1
+    - secp384r1
     - *to be continued*
 
 - *hasher*. Implemets different hash functions. Currently supports:
@@ -17,6 +18,7 @@ Currently, it supports:
     - SHA256
     - SHA384
     - SHA512
+    - Poseidon (fixed missing constraints)
     - *to be continued*
 
 - *signatures*. Implemets different signature schemes. Currently supports:
@@ -29,3 +31,14 @@ Currently, it supports:
     - *to be continued*
 
 
+## SETUP
+
+```
+npm install
+```
+
+## TESTS
+
+```
+npm test
+```
