@@ -242,11 +242,11 @@ template BigMultOptimised(CHUNK_SIZE, CHUNK_NUMBER){
 template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     
     assert(CHUNK_NUMBER * 2 <= 253);
-
+    
     signal input base[CHUNK_NUMBER * 2];
     signal input modulus[CHUNK_NUMBER];
     signal input dummy;
-
+    
     var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, base, modulus);
     
     signal output div[CHUNK_NUMBER + 1];
@@ -266,7 +266,7 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     multChecks.in1 <== div;
     multChecks.in2 <== modulus;
     multChecks.dummy <== dummy;
-
+    
     component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER);
     
     greaterThan.in[0] <== modulus;
@@ -280,8 +280,8 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
     bigAddCheck.in1 <== multChecks.out;
     bigAddCheck.in2 <== mod;
     bigAddCheck.dummy <== dummy;
-
-
+    
+    
     component smartEqual = SmartEqual(CHUNK_SIZE, CHUNK_NUMBER * 2 + 2);
     smartEqual.in[0] <== bigAddCheck.out;
     for (var i = 0; i < CHUNK_NUMBER * 2; i++){
@@ -314,6 +314,28 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
     
     out <== bigMod.mod;
 }
+
+// calculates in[0] * in[1] % in[2], all in[i] has CHUNK_NUMBER chunks
+// if in[2] last chunk == 0, error will occur
+// use only for CHUNK_NUMBER != 2 ** x, otherwise unefficient
+template BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in[3][CHUNK_NUMBER];
+    signal output out[CHUNK_NUMBER];
+    signal input dummy;
+    
+    component bigMult = BigMult(CHUNK_SIZE, CHUNK_NUMBER);
+    bigMult.in[0] <== in[0];
+    bigMult.in[1] <== in[1];
+    bigMult.dummy <== dummy;
+    
+    component bigMod = BigMod(CHUNK_SIZE, CHUNK_NUMBER);
+    bigMod.base <== bigMult.out;
+    bigMod.modulus <== in[2];
+    bigMod.dummy <== dummy;
+    
+    out <== bigMod.mod;
+}
+
 
 // substition of 2 nums with CHUNK_NUMBER 
 // out is CHUNK_NUMBER with overflows
@@ -356,12 +378,11 @@ template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-// Computes CHUNK_NUMBER number power with some exp
-// exp = 2 ** (E_BITS - 1) + 1
-// this template created for RSA signature verification purpuses
-// any exp will be added later
-template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, E_BITS) {
-    assert(E_BITS >= 2);
+// Computes CHUNK_NUMBER number power with EXP = exponent
+// EXP is default num, not chunked bigInt!!!
+// use for CHUNK_NUMBER == 2**n, otherwise error will occur
+template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
+    assert(EXP >= 2);
     
     signal input base[CHUNK_NUMBER];
     signal input modulus[CHUNK_NUMBER];
@@ -369,37 +390,53 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, E_BITS) {
     
     signal output out[CHUNK_NUMBER];
     
-    component muls[E_BITS];
+    var exp_process[256] = exp_to_bits(EXP);
     
-    for (var i = 0; i < E_BITS; i++) {
+    component muls[exp_process[0]];
+    component resultMuls[exp_process[1] - 1];
+    
+    for (var i = 0; i < exp_process[0]; i++){
         muls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
         muls[i].dummy <== dummy;
-        for (var j = 0; j < CHUNK_NUMBER; j++) {
-            muls[i].in[2][j] <== modulus[j];
+        muls[i].in[2] <== modulus;
+    }
+    
+    for (var i = 0; i < exp_process[1] - 1; i++){
+        resultMuls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
+        resultMuls[i].dummy <== dummy;
+        resultMuls[i].in[2] <== modulus;
+    }
+    
+    muls[0].in[0] <== base;
+    muls[0].in[1] <== base;
+    
+    for (var i = 1; i < exp_process[0]; i++){
+        muls[i].in[0] <== muls[i - 1].out;
+        muls[i].in[1] <== muls[i - 1].out;
+    }
+    
+    for (var i = 0; i < exp_process[1] - 1; i++){
+        if (i == 0){
+            if (exp_process[i + 2] == 0){
+                resultMuls[i].in[0] <== base;
+            } else {
+                resultMuls[i].in[0] <== muls[exp_process[i + 2] - 1].out;
+            }
+            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
+        }
+        else {
+            resultMuls[i].in[0] <== resultMuls[i - 1].out;
+            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
         }
     }
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++) {
-        muls[0].in[0][i] <== base[i];
-        muls[0].in[1][i] <== base[i];
-    }
-    
-    for (var i = 1; i < E_BITS - 1; i++) {
-        for (var j = 0; j < CHUNK_NUMBER; j++) {
-            muls[i].in[0][j] <== muls[i - 1].out[j];
-            muls[i].in[1][j] <== muls[i - 1].out[j];
-        }
-    }
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++) {
-        muls[E_BITS - 1].in[0][i] <== base[i];
-        muls[E_BITS - 1].in[1][i] <== muls[E_BITS - 2].out[i];
-    }
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++) {
-        out[i] <== muls[E_BITS - 1].out[i];
+
+    if (exp_process[1] == 1){
+        out <== muls[exp_process[0] - 1].out;
+    } else {
+        out <== resultMuls[exp_process[1] - 2].out;
     }
 }
+
 
 // use only for CHUNK_NUMBER == 2 ** x
 // calculates in ^ (-1) % modulus;
@@ -629,7 +666,7 @@ template BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
 // which can be convert it to this form:
 // a = bc + d so bc + d >= bc so d >= 0 
 // but we don`t need it for big nums, where we can`t have anyway
-// outs are mod with CHUNK_NUMBER_MODULUS and div with CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS +1 chunks
+// outs are mod with CHUNK_NUMBER_MODULUS and div with CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS + 1 chunks
 template BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     
     assert(CHUNK_NUMBER_BASE <= 253);
@@ -669,7 +706,7 @@ template BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
         multChecks.in1 <== modulus;
         multChecks.dummy <== dummy;
     }
-
+    
     component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER_MODULUS);
     
     greaterThan.in[0] <== modulus;
@@ -683,7 +720,7 @@ template BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     bigAddCheck.in1 <== multChecks.out;
     bigAddCheck.in2 <== mod;
     bigAddCheck.dummy <== dummy;
-
+    
     component smartEqual = SmartEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE + 2);
     smartEqual.in[0] <== bigAddCheck.out;
     for (var i = 0; i < CHUNK_NUMBER_BASE; i++){
@@ -747,13 +784,74 @@ template BigSubNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
 template ScalarMultNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[CHUNK_NUMBER];
     signal input scalar;
-
+    
     signal output out[CHUNK_NUMBER];
-
+    
     for (var i = 0; i < CHUNK_NUMBER; i++){
         out[i] <== scalar * in[i];
     }
 }
+
+// Computes CHUNK_NUMBER number power with EXP = exponent
+// EXP is default num, not chunked bigInt!!!
+// use for CHUNK_NUMBER!= 2**n, otherwise use "PowerMod"
+template PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
+
+    assert(EXP >= 2);
+    
+    signal input base[CHUNK_NUMBER];
+    signal input modulus[CHUNK_NUMBER];
+    signal input dummy;
+    
+    signal output out[CHUNK_NUMBER];
+    
+    var exp_process[256] = exp_to_bits(EXP);
+    
+    component muls[exp_process[0]];
+    component resultMuls[exp_process[1] - 1];
+    
+    for (var i = 0; i < exp_process[0]; i++){
+        muls[i] = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+        muls[i].dummy <== dummy;
+        muls[i].in[2] <== modulus;
+    }
+    
+    for (var i = 0; i < exp_process[1] - 1; i++){
+        resultMuls[i] = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+        resultMuls[i].dummy <== dummy;
+        resultMuls[i].in[2] <== modulus;
+    }
+    
+    muls[0].in[0] <== base;
+    muls[0].in[1] <== base;
+    
+    for (var i = 1; i < exp_process[0]; i++){
+        muls[i].in[0] <== muls[i - 1].out;
+        muls[i].in[1] <== muls[i - 1].out;
+    }
+    
+    for (var i = 0; i < exp_process[1] - 1; i++){
+        if (i == 0){
+            if (exp_process[i + 2] == 0){
+                resultMuls[i].in[0] <== base;
+            } else {
+                resultMuls[i].in[0] <== muls[exp_process[i + 2] - 1].out;
+            }
+            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
+        }
+        else {
+            resultMuls[i].in[0] <== resultMuls[i - 1].out;
+            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
+        }
+    }
+
+    if (exp_process[1] == 1){
+        out <== muls[exp_process[0] - 1].out;
+    } else {
+        out <== resultMuls[exp_process[1] - 2].out;
+    }
+}
+
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------
 // comparators for big numbers

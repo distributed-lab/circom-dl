@@ -92,7 +92,7 @@ def get_cache_json(n, k, stride):
     EXP = 512 + stride
     g_pows = get_g_pows(EXP)
 
-    powers = {"powers": [], "dummy": 0, "in":[get_long_str(64, 4, Gx), get_long_str(64, 4, Gy)], "scalar": get_long_str(64, 4, scalar)}
+    powers = {"powers": [], "dummy": 0, "in":[get_long_str(n, k, Gx), get_long_str(n, k, Gy)], "scalar": get_long_str(n, k, scalar)}
 
     for stride_idx in range(num_strides):
         stride_data = []
@@ -117,17 +117,17 @@ def get_cache_json(n, k, stride):
 
 
 def write_to_file():
-    ecdsa_func_str = get_cache_json(64, 4, 8)
+    ecdsa_func_str = get_cache_json(64, 6, 8)
     file_name = "input_mult.json"
 
     with open(file_name, "w") as file:
         file.write(ecdsa_func_str)
 
 
-Gx = 52575969560191351534542091466380106041028581718640875237441073011616025668110
-Gy = 24843789797109572893402439557748964186754677981311543350228155441542769376468
-P = 0xa9fb57dba1eea9bc3e660a909d838d726e3bf623d52620282013481d1f6e5377
-A = 0x7d5a0975fc2c3057eef67530417affe7fb8055c126dc5c6ce94a4b44f330b5d9
-B = 0x26dc5c6ce94a4b44f330b5d9bbd77cbf958416295cf7e1ce6bccdc18ff8c07b6
+P = 0x8cb91e82a3386d280f5d6f7e50e641df152f7109ed5456b412b1da197fb71123acd3a729901d1a71874700133107ec53
+A = 0x7bc382c63d8c150c3c72080ace05afa0c2bea28e4fb22787139165efba91f90f8aa5814a503ad4eb04a8c7dd22ce2826
+B = 0x4a8c7dd22ce28268b39b55416f0447c2fb77de107dcd2a62e880ea53eeb62d57cb4390295dbc9943ab78696fa504c11
+Gx = 0x1d1c64f068cf45ffa2a63a81b7c13f6b8847a3e77ef14fe3db7fcafe0cbd10e8e826e03436d646aaef87b2e247d4af1e
+Gy = 0x8abe1d7520f9c2a45cb1eb8e95cfd55262b70b29feec5864e19c054ff99129280e4646217791811142820341263c5315
 scalar = 0x2364528376458237645823648273648232342342342342342342342342341233
 write_to_file()
