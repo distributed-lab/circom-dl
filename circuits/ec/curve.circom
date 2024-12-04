@@ -16,6 +16,7 @@ include "./get.circom";
 // A, B, P in every function - params of needed curve, chunked the same as every other chunking (64 4 for now)
 // Example usage of operation (those are params for secp256k1 ec):
 // EllipticCurveDoubleOptimised(64, 4, [0,0,0,0], [7,0,0,0], [18446744069414583343, 18446744073709551615, 18446744073709551615, 18446744073709551615]);
+// EllipticCurveDoubleOptimised(64, 4, [0,0,0,0], [7,0,0,0], [18446744069414583343, 18446744073709551615, 18446744073709551615, 18446744073709551615]);
 //---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // To add a new curve u should do next steps:
 // Get curve params(A, B, P) in chunked representation
