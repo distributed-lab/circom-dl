@@ -11,7 +11,8 @@ include "./floatFunc.circom";
 // Addition and substraction for those numbers is the same as default:
 // c <== a + b,
 // a, b, c - floats in our realisation
-// 
+// (don`t forget about linear constraint here!)
+// for multiplying floats use next templates
 //------------------------------------------------------------
 // Multiplication of 2 floats with ceiling down
 // Uses n*2 + 1 constraints
