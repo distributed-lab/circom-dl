@@ -8,10 +8,6 @@ m2.circom
 dev
 dev.*
 tools
-circuits/babyjubjub/*
-circuits/matrix/*
-test/circuits/babyjubjub/*
-test/montogomery.js
 input*.json
 tmp*.circom
 tmp.txt
