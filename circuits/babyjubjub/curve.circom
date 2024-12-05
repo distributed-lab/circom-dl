@@ -3,6 +3,7 @@ pragma circom 2.1.6;
 include "../bitify/bitify.circom";
 include "../bitify/comparators.circom";
 include "../int/arithmetic.circom";
+include "../utils/switcher.circom";
 include "./get.circom";
 
 // Those templates for Babujubjub curve operations
@@ -33,20 +34,24 @@ template addZeroBabyjub(){
     // 0 1 -> left
     // 1 0 -> right
     // 1 1 -> right
-    
-    signal resultLeft[2];
-    signal resultLeft2[2];
-    signal resultRight[2];
-    signal resultRight2[2];
+
+    component switcherLeft[2];
+    component switcherRight[2];
     
     for (var i = 0; i < 2; i++){
-        resultLeft[i] <== (1 - isZeroIn2.out) * adder.out[i];
-        resultLeft2[i] <== isZeroIn2.out * in1[i];
-        resultRight[i] <== isZeroIn1.out * in2[i];
-        resultRight2[i] <== (1 - isZeroIn1.out) * (resultLeft[i] + resultLeft2[i]) + resultRight[i];
+        switcherLeft[i] = Switcher();
+        switcherLeft[i].bool <== isZeroIn2.out;
+        switcherLeft[i].in[0] <== adder.out[i];
+        switcherLeft[i].in[1] <== in1[i];
+
+        switcherRight[i] = Switcher();
+        switcherRight[i].bool <== isZeroIn1.out;
+        switcherRight[i].in[0] <== switcherLeft[i].out[0];
+        switcherRight[i].in[1] <== in2[i];
     }
     
-    out <== resultRight2;
+    out[0] <== switcherRight[0].out[0];
+    out[1] <== switcherRight[1].out[0];
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------------
