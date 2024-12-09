@@ -5,7 +5,6 @@ function log_float(float, n){
     var div = float \ 2**n;
     var mod = float % 2**n;
     mod = mod * 10**n \ 2**n;
-
     var leading_zeros = 0;
     var counter = n - 1;
     while (mod < 10 ** counter){
@@ -314,4 +313,28 @@ function log_float(float, n){
     }
 
     return 0;
+}
+
+function factorial(n){
+    var result = 1;
+    for (var i = 2; i <= n; i++){
+        result *= i;
+    }
+    return result;
+}
+
+function fraction_convertor(a, b, n){
+    // log((a * 2**n) \ b, (a * 2**n) % b);
+    return (a * 2**n) \ b;
+}
+
+function precompute_exp_constants(k, n){
+    var res[100];
+    res[0] = 2**n;
+    for (var i = 1; i < k; i++){
+        res[i] = fraction_convertor(1, factorial(i), n);
+    }
+    
+
+    return res;
 }

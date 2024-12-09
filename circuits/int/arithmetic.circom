@@ -2,7 +2,9 @@ pragma circom 2.1.6;
 
 include "../bitify/comparators.circom";
 include "../bitify/bitify.circom";
+include "../utils/switcher.circom";
 
+ 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Some templates for num operations
 
@@ -182,3 +184,21 @@ template GetSumOfNElements(N){
     }
     out <== sum[N - 2] + dummy * dummy;
 }
+
+// get absolute value of number
+// sign = 1 if +, 0 if -
+template Abs(){
+    signal input in;
+    signal output sign;
+    signal output out;
+
+    component lessThan = GreaterEqThan(253);
+    lessThan.in[0] <== in;
+    lessThan.in[1] <== 10944121435919637611123202872628637544274182200208017171849102093287904247808;
+    component switcher = Switcher();
+    switcher.bool <== lessThan.out;
+    switcher.in[0] <== -in;
+    switcher.in[1] <== in;
+    out <== switcher.out[0];
+
+} 

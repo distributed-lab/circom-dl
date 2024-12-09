@@ -44,7 +44,7 @@ template ForceEqualIfEnabled() {
 
 // Compare in[0] < in[1], out is 0 or 1
 template LessThan(LEN) {
-    assert(LEN <= 252);
+    assert(LEN <= 253);
     signal input in[2];
     signal output out;
     
