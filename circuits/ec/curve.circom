@@ -7,9 +7,10 @@ include "./powers/p384pows.circom";
 include "./powers/secp224r1pows.circom";
 include "./powers/secp256k1pows.circom";
 include "./powers/secp521r1pows.circom";
+include "./powers/brainpoolP224r1pows.circom";
 include "./powers/brainpoolP256r1pows.circom";
 include "./powers/brainpoolP384r1pows.circom";
-include "./powers/brainpoolP224r1pows.circom";
+include "./powers/brainpoolP512r1pows.circom";
 include "../bitify/bitify.circom";
 include "../bitify/comparators.circom";
 include "../int/arithmetic.circom";
@@ -582,7 +583,11 @@ template EllipicCurveScalarGeneratorMultiplicationOptimised(CHUNK_SIZE, CHUNK_NU
             powers = get_g_pow_stride8_table_secp521r1(CHUNK_SIZE, CHUNK_NUMBER);
         }
     }
-    
+    if (CHUNK_NUMBER == 8 && CHUNK_SIZE == 64){
+        if (P[0] == 2930260431521597683 && P[1] == 2918894611604883077 && P[2] == 12595900938455318758 && P[3] == 9029043254863489090 && P[4] == 15448363540090652785 && P[5] == 14641358191536493070 && P[6] == 4599554755319692295 && P[7] == 12312170373589877899){
+            powers = get_g_pow_stride8_table_brainpoolP512r1(CHUNK_SIZE, CHUNK_NUMBER);
+        }
+    }
     component num2bits[CHUNK_NUMBER];
     for (var i = 0; i < CHUNK_NUMBER; i++){
         num2bits[i] = Num2Bits(CHUNK_SIZE);
