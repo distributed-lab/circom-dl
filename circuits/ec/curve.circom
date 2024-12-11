@@ -7,6 +7,7 @@ include "./powers/brainpoolP256r1pows.circom";
 include "./powers/brainpoolP384r1pows.circom";
 include "./powers/p256pows.circom";
 include "./powers/p384pows.circom";
+include "./powers/secp521r1pows.circom";
 include "../bitify/bitify.circom";
 include "../bitify/comparators.circom";
 include "../int/arithmetic.circom";
@@ -547,10 +548,10 @@ template EllipticCurveAddOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 // To make it work for other curve u should generate generator pow table
 // Other curves will be added by ourself soon
 // Will fail if scalar == 0, don`t do it
-// Complexity is 31 additions
+// Complexity is 31 additions for 256 curves
 template EllipicCurveScalarGeneratorMultiplicationOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
-    assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
+    assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4 || CHUNK_SIZE == 66 && CHUNK_NUMBER == 8);
     
     signal input scalar[CHUNK_NUMBER];
     signal input dummy;
@@ -563,14 +564,21 @@ template EllipicCurveScalarGeneratorMultiplicationOptimised(CHUNK_SIZE, CHUNK_NU
     
     dummy * dummy === 0;
     var powers[parts][2 ** STRIDE][2][CHUNK_NUMBER];
-    if (P[0] == 18446744069414583343 && P[1] == 18446744073709551615 && P[2] == 18446744073709551615 && P[3] == 18446744073709551615){
-        powers = get_g_pow_stride8_table_secp256k1(CHUNK_SIZE, CHUNK_NUMBER);
+    if (CHUNK_NUMBER == 4){
+        if (P[0] == 18446744069414583343 && P[1] == 18446744073709551615 && P[2] == 18446744073709551615 && P[3] == 18446744073709551615){
+            powers = get_g_pow_stride8_table_secp256k1(CHUNK_SIZE, CHUNK_NUMBER);
+        }
+        if (P[0] == 2311270323689771895 && P[1] == 7943213001558335528 && P[2] == 4496292894210231666 && P[3] == 12248480212390422972){
+            powers = get_g_pow_stride8_table_brainpoolP256r1(CHUNK_SIZE, CHUNK_NUMBER);
+        }
+        if (P[0] == 18446744073709551615 && P[1] == 4294967295 && P[2] == 0 && P[3] == 18446744069414584321) {
+            powers = get_g_pow_stride8_table_p256(CHUNK_SIZE, CHUNK_NUMBER);
+        }
     }
-    if (P[0] == 2311270323689771895 && P[1] == 7943213001558335528 && P[2] == 4496292894210231666 && P[3] == 12248480212390422972){
-        powers = get_g_pow_stride8_table_brainpoolP256r1(CHUNK_SIZE, CHUNK_NUMBER);
-    }
-    if (P[0] == 18446744073709551615 && P[1] == 4294967295 && P[2] == 0 && P[3] == 18446744069414584321) {
-        powers = get_g_pow_stride8_table_p256(CHUNK_SIZE, CHUNK_NUMBER);
+    if (CHUNK_NUMBER == 8 && CHUNK_SIZE == 66){
+        if (P[0] == 73786976294838206463 && P[1] == 73786976294838206463 && P[2] == 73786976294838206463 && P[3] == 73786976294838206463 && P[4] == 73786976294838206463 && P[5] == 73786976294838206463 && P[6] == 73786976294838206463 && P[7] == 576460752303423487){
+            powers = get_g_pow_stride8_table_secp521r1(CHUNK_SIZE, CHUNK_NUMBER);
+        }
     }
     
     component num2bits[CHUNK_NUMBER];
@@ -741,7 +749,7 @@ template EllipicCurveScalarGeneratorMultiplicationOptimised(CHUNK_SIZE, CHUNK_NU
 // 255 doubles + 256 adds
 // Our algo complexity:
 // 256 - WINDOW_SIZE doubles, 256 / WINDOW_SIZE adds, 2 ** WINDOW_SIZE - 2 adds and doubles for precompute
-// for 256 curve best WINDOW_SIZE with 330 operations with points
+// for 256 curve best WINDOW_SIZE = 4 with 330 operations with points
 template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE){
     
     signal input in[2][CHUNK_NUMBER];
@@ -758,14 +766,13 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
     var DOUBLERS_NUMBER = CHUNK_SIZE * CHUNK_NUMBER - WINDOW_SIZE;
     var ADDERS_NUMBER = CHUNK_SIZE * CHUNK_NUMBER \ WINDOW_SIZE;
     
-
+    
     component doublers[DOUBLERS_NUMBER];
-    component adders  [ADDERS_NUMBER - 1]; // we can skip first one
+    component adders  [ADDERS_NUMBER - 1];
     component bits2Num[ADDERS_NUMBER];
     component num2Bits[CHUNK_NUMBER];
     
     component getDummy = EllipticCurveGetDummy(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
-    
     signal scalarBits[CHUNK_NUMBER * CHUNK_SIZE];
     
     for (var i = 0; i < CHUNK_NUMBER; i++){
@@ -779,7 +786,7 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
     signal resultingPoints[ADDERS_NUMBER + 1][2][CHUNK_NUMBER];
     signal additionPoints[ADDERS_NUMBER][2][CHUNK_NUMBER];
     
-
+    
     component isZeroResult[ADDERS_NUMBER];
     component isZeroAddition[ADDERS_NUMBER];
     
@@ -819,7 +826,7 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
                             doubleSwitcher[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].bool <== isZeroResult[i \ WINDOW_SIZE].out;
                             doubleSwitcher[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].in[0] <== getDummy.dummyPoint[axis_idx][coor_idx];
                             doubleSwitcher[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].in[1] <== resultingPoints[i \ WINDOW_SIZE][axis_idx][coor_idx];
-                            
+
                             doublers[i + j - WINDOW_SIZE].in[axis_idx][coor_idx] <== doubleSwitcher[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].out[1];
                         }
                     }
@@ -893,10 +900,9 @@ template EllipticCurvePipingerMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZ
                     resultingPoints[i \ WINDOW_SIZE + 1][axis_idx][coor_idx] <== resultSwitcherDoubling[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].out[1];
                 }
             }
-        }   
+        }
     }
     out <== resultingPoints[ADDERS_NUMBER];
-
 }
 
 // Our elliptic scalar mult cost almost ~5 000 000 constarints
@@ -1823,7 +1829,7 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     dummy * dummy === 0;
     signal output out[2][CHUNK_NUMBER];
     
-    if (CHUNK_NUMBER == 4 && CHUNK_SIZE == 64){
+    if (CHUNK_NUMBER == 4 && CHUNK_SIZE == 64 || CHUNK_SIZE == 66 && CHUNK_NUMBER == 8){
         component ecDoubleOptimised = EllipticCurveDoubleOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
         ecDoubleOptimised.in <== in;
         ecDoubleOptimised.dummy <== dummy;
@@ -1843,7 +1849,7 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     dummy * dummy === 0;
     signal output out[2][CHUNK_NUMBER];
     
-    if (CHUNK_NUMBER == 4 && CHUNK_SIZE == 64){
+    if (CHUNK_NUMBER == 4 && CHUNK_SIZE == 64 || CHUNK_SIZE == 66 && CHUNK_NUMBER == 8){
         component ecAddOptimised = EllipticCurveAddOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
         ecAddOptimised.in1 <== in1;
         ecAddOptimised.in2 <== in2;
@@ -1864,7 +1870,7 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
     dummy * dummy === 0;
     signal output out[2][CHUNK_NUMBER];
     
-    if (CHUNK_SIZE == 64 && CHUNK_NUMBER == 4){
+    if (CHUNK_SIZE == 64 && CHUNK_NUMBER == 4 || CHUNK_NUMBER == 8 && CHUNK_SIZE == 66){
         component ecGenMultOptimised = EllipicCurveScalarGeneratorMultiplicationOptimised(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
         ecGenMultOptimised.scalar <== scalar;
         ecGenMultOptimised.dummy <== dummy;
@@ -1875,9 +1881,6 @@ template EllipicCurveScalarGeneratorMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, 
         ecGenMultNonOptimised.dummy <== dummy;
         out <== ecGenMultNonOptimised.out;
     }
-    
-    
-    
 }
 
 template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
@@ -1909,4 +1912,3 @@ template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A,
         
     }
 }
-
