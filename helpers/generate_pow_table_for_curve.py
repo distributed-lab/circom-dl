@@ -1,11 +1,11 @@
 import math
 import sys
 
-P = 0xd7c134aa264366862a18302575d1d787b09f075797da89f57ec8c0ff
-A = 0x68a5e62ca9ce6c1c299803a6c1530b514e182ad8b0042a59cad29f43
-B = 0x2580f63ccfe44138870713b1a92369e33e2135d266dbb372386c400b
-Gx = 0xd9029ad2c7e5cf4340823b2a87dc68c9e4ce3174c1e6efdee12c07d
-Gy = 0x58aa56f772c0726f24c6b89e4ecdac24354b9e99caa3f6d3761402cd
+P = 0xffffffffffffffffffffffffffffffff000000000000000000000001
+A = 0xfffffffffffffffffffffffffffffffefffffffffffffffffffffffe
+B = 0xb4050a850c04b3abf54132565044b0b7d7bfd8ba270b39432355ffb4
+Gx = 0xb70e0cbd6bb4bf7f321390b94a03c1d356c21122343280d6115c1d21
+Gy= 0xbd376388b5f723fb4c22dfe6cd4375a05a07476444d5819985007e34
 
 
 def egcd(a, b):
@@ -143,5 +143,5 @@ def write_to_file(curve_name):
         file.write(ecdsa_func_str)
 
 #RUN FROM ROOT 
-curve_name = "brainpoolP224r1"
+curve_name = "secp224r1"
 write_to_file(curve_name)

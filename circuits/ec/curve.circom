@@ -2,13 +2,14 @@ pragma circom  2.1.6;
 
 include "../bigInt/bigIntOverflow.circom";
 include "../bigInt/bigIntFunc.circom";
+include "./powers/p256pows.circom";
+include "./powers/p384pows.circom";
+include "./powers/secp224r1pows.circom";
 include "./powers/secp256k1pows.circom";
+include "./powers/secp521r1pows.circom";
 include "./powers/brainpoolP256r1pows.circom";
 include "./powers/brainpoolP384r1pows.circom";
 include "./powers/brainpoolP224r1pows.circom";
-include "./powers/p256pows.circom";
-include "./powers/p384pows.circom";
-include "./powers/secp521r1pows.circom";
 include "../bitify/bitify.circom";
 include "../bitify/comparators.circom";
 include "../int/arithmetic.circom";
@@ -1437,6 +1438,9 @@ template EllipicCurveScalarGeneratorMultiplicationNonOptimised(CHUNK_SIZE, CHUNK
     if (CHUNK_NUMBER == 7 && CHUNK_SIZE == 32){
         if (P[0] == 2127085823 && P[1] == 2547681781 && P[2] == 2963212119 && P[3] == 1976686471 && P[4] == 706228261 && P[5] == 641951366 && P[6] == 3619763370){
             powers = get_g_pow_stride8_table_brainpoolP224r1(CHUNK_SIZE, CHUNK_NUMBER);
+        }
+        if (P[0] == 1 && P[1] == 0 && P[2] == 0 && P[3] == 4294967295 && P[4] == 4294967295 && P[5] == 4294967295 && P[6] == 4294967295 ){
+            powers = get_g_pow_stride8_table_secp224r1(CHUNK_SIZE, CHUNK_NUMBER);
         }
     }
     
