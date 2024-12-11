@@ -1,11 +1,12 @@
 import math
 import sys
 
-P = 0x01ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-A = 0x01fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc
-B = 0x0051953eb9618e1c9a1f929a21a0b68540eea2da725b99b315f3b8b489918ef109e156193951ec7e937b1652c0bd3bb1bf073573df883d2c34f1ef451fd46b503f00
-Gx = 0x00c6858e06b70404e9cd9e3ecb662395b4429c648139053fb521f828af606b4d3dbaa14b5e77efe75928fe1dc127a2ffa8de3348b3c1856a429bf97e7e31c2e5bd66
-Gy = 0x011839296a789a3bc0045c8a5fb42c7d1bd998f54449579b446817afbd17273e662c97ee72995ef42640c550b9013fad0761353c7086a272c24088be94769fd16650
+P = 0xd7c134aa264366862a18302575d1d787b09f075797da89f57ec8c0ff
+A = 0x68a5e62ca9ce6c1c299803a6c1530b514e182ad8b0042a59cad29f43
+B = 0x2580f63ccfe44138870713b1a92369e33e2135d266dbb372386c400b
+Gx = 0xd9029ad2c7e5cf4340823b2a87dc68c9e4ce3174c1e6efdee12c07d
+Gy = 0x58aa56f772c0726f24c6b89e4ecdac24354b9e99caa3f6d3761402cd
+
 
 def egcd(a, b):
     if a == 0:
@@ -137,10 +138,10 @@ def get_ecdsa_func_str(n, k, stride_list, curve_name):
 
 def write_to_file(curve_name):
     stride_list = [8]
-    ecdsa_func_str = get_ecdsa_func_str(66, 8, stride_list, curve_name)
+    ecdsa_func_str = get_ecdsa_func_str(32, 7, stride_list, curve_name)
     with open('./circuits/ec/powers/{curve}pows.circom'.format(curve = curve_name), 'w') as file:
         file.write(ecdsa_func_str)
 
 #RUN FROM ROOT 
-curve_name = "secp521r1"
+curve_name = "brainpoolP224r1"
 write_to_file(curve_name)
