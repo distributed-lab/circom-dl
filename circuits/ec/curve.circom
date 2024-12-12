@@ -9,6 +9,7 @@ include "./powers/secp256k1pows.circom";
 include "./powers/secp521r1pows.circom";
 include "./powers/brainpoolP224r1pows.circom";
 include "./powers/brainpoolP256r1pows.circom";
+include "./powers/brainpoolP320r1pows.circom";
 include "./powers/brainpoolP384r1pows.circom";
 include "./powers/brainpoolP512r1pows.circom";
 include "../bitify/bitify.circom";
@@ -1446,6 +1447,11 @@ template EllipicCurveScalarGeneratorMultiplicationNonOptimised(CHUNK_SIZE, CHUNK
         }
         if (P[0] == 1 && P[1] == 0 && P[2] == 0 && P[3] == 4294967295 && P[4] == 4294967295 && P[5] == 4294967295 && P[6] == 4294967295 ){
             powers = get_g_pow_stride8_table_secp224r1(CHUNK_SIZE, CHUNK_NUMBER);
+        }
+    }
+    if (CHUNK_NUMBER == 5 && CHUNK_SIZE == 64){
+        if (P[0] == 18218206948094062119 && P[1] == 5733849700882443304 && P[2] == 17982820153128390127 && P[3] == 16229979505782022245 && P[4] == 15230689193496432567){
+            powers = get_g_pow_stride8_table_brainpoolP320r1(CHUNK_SIZE, CHUNK_NUMBER);
         }
     }
     
