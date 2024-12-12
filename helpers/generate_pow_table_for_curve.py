@@ -1,11 +1,11 @@
 import math
 import sys
 
-P = 0xd35e472036bc4fb7e13c785ed201e065f98fcfa6f6f40def4f92b9ec7893ec28fcd412b1f1b32e27
-A = 0x3ee30b568fbab0f883ccebd46d3f3bb8a2a73513f5eb79da66190eb085ffa9f492f375a97d860eb4
-B = 0x520883949dfdbc42d3ad198640688a6fe13f41349554b49acc31dccd884539816f5eb4ac8fb1f1a6
-Gx = 0x43bd7e9afb53d8b85289bcc48ee5bfe6f20137d10a087eb6e7871e2a10a599c710af8d0d39e20611
-Gy = 0x14fdd05545ec1cc8ab4093247f77275e0743ffed117182eaa9c77877aaac6ac7d35245d1692e8ee1
+P = 0xfffffffffffffffffffffffffffffffeffffffffffffffff
+A = 0xfffffffffffffffffffffffffffffffefffffffffffffffc
+B = 0x64210519e59c80e70fa7e9ab72243049feb8deecc146b9b1
+Gx = 0x188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012
+Gy = 0x07192b95ffc8da78631011ed6b24cdd573f977a11e794811
 
 def egcd(a, b):
     if a == 0:
@@ -142,5 +142,5 @@ def write_to_file(curve_name):
         file.write(ecdsa_func_str)
 
 #RUN FROM ROOT 
-curve_name = "brainpoolP320r1"
+curve_name = "secp192r1"
 write_to_file(curve_name)
