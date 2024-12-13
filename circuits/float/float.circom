@@ -192,7 +192,7 @@ template FloatIsNegative(){
     signal input in;
     signal output out;
 
-    var QUATER_P = (-1) / 4; 
+    var QUATER_P = (-1) \ 4; 
 
     component getLastBit = GetLastBit();
 
@@ -202,5 +202,4 @@ template FloatIsNegative(){
     n2b.in <== 2 ** 253 - QUATER_P + getLastBit.div;
 
     out <== n2b.out[253];
-
-}   
+}
