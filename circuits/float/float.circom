@@ -202,4 +202,5 @@ template FloatIsNegative(){
     n2b.in <== 2 ** 253 - QUATER_P + getLastBit.div;
 
     out <== n2b.out[253];
-}
+
+}   
