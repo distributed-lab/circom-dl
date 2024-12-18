@@ -197,19 +197,15 @@ template Exp(n){
     out <== reduce.out;
 }
 
+//Use for values |in| <= (add value later)
 template FloatIsNegative(){
     signal input in;
     signal output out;
 
-    var QUATER_P = (-1) \ 4; 
+    component num2Bits = Num2Bits(254);
 
-    component getLastBit = GetLastBit();
+    num2Bits.in <== in;
 
-    getLastBit.in <== in;
-    component n2b = Num2Bits(254);
-
-    n2b.in <== 2 ** 253 - QUATER_P + getLastBit.div;
-
-    out <== n2b.out[253];
+    out <== num2Bits.out[253];
 
 }   
