@@ -144,9 +144,18 @@ template RemovePrecision(n1, n2){
     
     signal input in;
     signal output out;
-    component getLastNBits = GetLastNBits(n2 - n1);
-    getLastNBits.in <== in;
-    out <== getLastNBits.div + getLastNBits.out[n2 - n1 - 1] * getLastNBits.out[n2 - n1 - 1];
+    component num2Bits = Num2Bits(253);
+    num2Bits.in <== in;
+    component bits2Num = Bits2Num(253);
+    for (var i = 0; i < 253; i++) {
+        if (i > 252 - (n2 - n1)) {
+            bits2Num.in[i] <== 0;
+        }
+        else {
+            bits2Num.in[i] <== num2Bits.out[(n2-n1) + i];
+        }
+    }
+    out <== bits2Num.out;
 }
 
 // Computes e ^ x, where x is float by Teilor series.
