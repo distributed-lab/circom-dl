@@ -18,7 +18,7 @@ include "./karatsuba.circom";
 // To reduce overflow we must leave N[i] % 2 ** n for N[i] and add N[i] // 2 ** n to N[i + 1]
 // If u want to do many operation in a row, it is better to use overflow operations from "./bigIntOverflow" and then just reduce overflow from result
 
-// If u want to convert any number to this representation, u can this python3 script:
+// If u want to convert any number to this representation, u can this python3 function:
 // ```
 // def bigint_to_array(n, k, x):
 //     # Initialize mod to 1 (Python's int can handle arbitrarily large numbers)
