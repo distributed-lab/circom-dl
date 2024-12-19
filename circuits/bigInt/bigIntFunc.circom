@@ -1,5 +1,8 @@
 pragma circom 2.1.6;
 
+include "./dontOpenPlease.circom";
+
+
 function isNegative(x) {
     return x > 10944121435919637611123202872628637544274182200208017171849102093287904247808 ? 1 : 0;
 }
@@ -60,14 +63,14 @@ function splitOverflowedRegister(m, n, in) {
 // - 1 since the last register is included in the last ceil(m/n) array
 // + 1 since the carries from previous registers could push you over
 function getProperRepresentation(m, n, k, in) {
-    var ceilMN = 0; 
+    var ceilMN = 0;
     if (m % n == 0) {
         ceilMN = m \ n;
     } else {
         ceilMN = m \ n + 1;
     }
     
-    var pieces[200][200]; 
+    var pieces[200][200];
     for (var i = 0; i < k; i++) {
         for (var j = 0; j < 200; j++) {
             pieces[i][j] = 0;
@@ -82,8 +85,8 @@ function getProperRepresentation(m, n, k, in) {
         }
     }
     
-    var out[200]; 
-    var carries[200]; 
+    var out[200];
+    var carries[200];
     for (var i = 0; i < 200; i++) {
         out[i] = 0;
         carries[i] = 0;
@@ -231,18 +234,18 @@ function long_div(n, k, m, a, b){
 function long_div_non_strict(n, k, m, a, b){
     var out[2][100];
     m += k;
-    while (b[k-1] == 0) {
+    while (b[k - 1] == 0) {
         out[1][k] = 0;
         k--;
         assert(k > 0);
     }
     m -= k;
-
+    
     var remainder[200];
     for (var i = 0; i < m + k; i++) {
         remainder[i] = a[i];
     }
-
+    
     var mult[200];
     var dividend[200];
     for (var i = m; i >= 0; i--) {
@@ -256,9 +259,9 @@ function long_div_non_strict(n, k, m, a, b){
                 dividend[j] = remainder[j + i];
             }
         }
-
+        
         out[0][i] = short_div(n, k, dividend, b);
-
+        
         var mult_shift[200] = long_scalar_mult(n, k, out[0][i], b);
         var subtrahend[200];
         for (var j = 0; j < m + k; j++) {
@@ -266,7 +269,7 @@ function long_div_non_strict(n, k, m, a, b){
         }
         for (var j = 0; j <= k; j++) {
             if (i + j < m + k) {
-               subtrahend[i + j] = mult_shift[j];
+                subtrahend[i + j] = mult_shift[j];
             }
         }
         remainder = long_sub(n, m + k, remainder, subtrahend);
@@ -275,7 +278,7 @@ function long_div_non_strict(n, k, m, a, b){
         out[1][i] = remainder[i];
     }
     out[1][k] = 0;
-
+    
     return out;
 }
 
@@ -331,7 +334,7 @@ function short_div(n, k, a, b) {
 // adapted from BigMulShortLong and LongToShortNoEndCarry2 witness computation
 function prod(n, k, a, b) {
     // first compute the intermediate values. taken from BigMulShortLong
-    var prod_val[200]; 
+    var prod_val[200];
     for (var i = 0; i < 2 * k - 1; i++) {
         prod_val[i] = 0;
         if (i < k) {
@@ -346,14 +349,14 @@ function prod(n, k, a, b) {
     }
     
     // now do a bunch of carrying to make sure registers not overflowed. taken from LongToShortNoEndCarry2
-    var out[200]; 
+    var out[200];
     
-    var split[200][3]; 
+    var split[200][3];
     for (var i = 0; i < 2 * k - 1; i++) {
         split[i] = SplitThreeFn(prod_val[i], n, n, n);
     }
     
-    var carry[200]; 
+    var carry[200];
     carry[0] = 0;
     out[0] = split[0][0];
     if (2 * k - 1 > 1) {
@@ -380,14 +383,14 @@ function prod(n, k, a, b) {
 // p is a prime
 // computes a^e mod p
 function mod_exp(n, k, a, p, e) {
-    var eBits[1000]; 
+    var eBits[1000];
     for (var i = 0; i < k; i++) {
         for (var j = 0; j < n; j++) {
             eBits[j + n * i] = (e[i] >> j) & 1;
         }
     }
     
-    var out[200]; 
+    var out[200];
     for (var i = 0; i < 200; i++) {
         out[i] = 0;
     }
@@ -397,7 +400,7 @@ function mod_exp(n, k, a, p, e) {
     for (var i = k * n - 1; i >= 0; i--) {
         // multiply by a if bit is 0
         if (eBits[i] == 1) {
-            var temp[200]; 
+            var temp[200];
             temp = prod(n, k, out, a);
             var temp2[2][200];
             temp2 = long_div(n, k, k, temp, p);
@@ -406,7 +409,7 @@ function mod_exp(n, k, a, p, e) {
         
         // square, unless we're at the end
         if (i > 0) {
-            var temp[200]; 
+            var temp[200];
             temp = prod(n, k, out, out);
             var temp2[2][200];
             temp2 = long_div(n, k, k, temp, p);
@@ -455,7 +458,7 @@ function mod_inv(n, k, a, p) {
     two[0] = 2;
     
     var pMinusTwo[200];
-    pMinusTwo = long_sub(n, k, pCopy, two); 
+    pMinusTwo = long_sub(n, k, pCopy, two);
     var out[200];
     out = mod_exp(n, k, a, pCopy, pMinusTwo);
     return out;
@@ -492,7 +495,7 @@ function prod_mod_p(n, k, a, b, p){
 }
 
 function long_add_mod(CHUNK_SIZE, CHUNK_NUMBER, A, B, P) {
-    var sum[200] = long_add(CHUNK_SIZE,CHUNK_NUMBER,A,B); 
+    var sum[200] = long_add(CHUNK_SIZE,CHUNK_NUMBER,A,B);
     var temp[2][200] = long_div2(CHUNK_SIZE,CHUNK_NUMBER,1,sum,P);
     return temp[1];
 }
@@ -500,7 +503,7 @@ function long_add_mod(CHUNK_SIZE, CHUNK_NUMBER, A, B, P) {
 function long_add(CHUNK_SIZE, CHUNK_NUMBER, A, B){
     var carry = 0;
     var sum[200];
-    for(var i=0; i<CHUNK_NUMBER; i++){
+    for (var i = 0; i < CHUNK_NUMBER; i++){
         var sumAndCarry[2] = SplitFn(A[i] + B[i] + carry, CHUNK_SIZE, CHUNK_SIZE);
         sum[i] = sumAndCarry[0];
         carry = sumAndCarry[1];
@@ -511,9 +514,9 @@ function long_add(CHUNK_SIZE, CHUNK_NUMBER, A, B){
 
 
 function long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, A, B, P) {
-    if(long_gt(CHUNK_SIZE, CHUNK_NUMBER, B, A) == 1){
+    if (long_gt(CHUNK_SIZE, CHUNK_NUMBER, B, A) == 1){
         return long_add(CHUNK_SIZE, CHUNK_NUMBER, A, long_sub(CHUNK_SIZE,CHUNK_NUMBER,P,B));
-    }else{
+    } else {
         return long_sub(CHUNK_SIZE, CHUNK_NUMBER, A, B);
     }
 }
@@ -531,7 +534,7 @@ function long_div2(CHUNK_SIZE, CHUNK_NUMBER, M, A, B){
     for (var i = 0; i < M + CHUNK_NUMBER; i++) {
         remainder[i] = A[i];
     }
-
+    
     var dividend[200];
     for (var i = M; i >= 0; i--) {
         if (i == M) {
@@ -552,7 +555,7 @@ function long_div2(CHUNK_SIZE, CHUNK_NUMBER, M, A, B){
         }
         for (var j = 0; j <= CHUNK_NUMBER; j++) {
             if (i + j < M + CHUNK_NUMBER) {
-               subtrahend[i + j] = MULT_SHIFT[j];
+                subtrahend[i + j] = MULT_SHIFT[j];
             }
         }
         remainder = long_sub(CHUNK_SIZE, M + CHUNK_NUMBER, remainder, subtrahend);
@@ -573,14 +576,14 @@ function reduce_overflow(n, k, m, N){
             overflow = N[i] \ (2 ** n);
         } else {
             M[i] = (N[i] + overflow) % (2 ** n);
-            overflow = (N[i]+ overflow) \ (2 ** n);
+            overflow = (N[i] + overflow) \ (2 ** n);
         }
     }
     for (var i = k; i < m; i++){
         M[i] = overflow % (2 ** n);
         overflow = overflow \ (2 ** n);
     }
-
+    
     return M;
 }
 
@@ -589,7 +592,7 @@ function exp_to_bits(exp){
     var result_mul_num = 0;
     var indexes[256];
     var bits[254];
-
+    
     var exp_clone = exp;
     var counter = 0;
     var result_counter;
@@ -598,15 +601,32 @@ function exp_to_bits(exp){
         exp = exp \ 2;
         if (bits[counter] == 1) {
             result_mul_num += 1;
-            indexes[result_counter+2] = counter;
+            indexes[result_counter + 2] = counter;
             result_counter += 1;
-        } 
+        }
         mul_num += 1;
         counter++;
     }
     indexes[0] = mul_num - 1;
     indexes[1] = result_mul_num;
-
+    
     return indexes;
+    
+}
 
+
+// 2.5 * a ** 1,6 < a * b
+function is_karatsuba_optimal(a, b){
+    if (a < 8 ){
+        return 0;
+    } else {
+        var a_coeff = get_a_coeff(a);
+        if (a_coeff > a * b){
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    return 0;
 }
