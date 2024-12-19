@@ -3,6 +3,7 @@ pragma circom 2.1.6;
 include "../int/arithmetic.circom";
 include "./matrixFunc.circom";
 include "../bigInt/bigIntFunc.circom";
+include "../float/float.circom";
 
 
 // Here are templates for matrix operations
@@ -211,4 +212,18 @@ template MatrixPower(n, EXP){
     }
 
     // var print = log_matrix(out, n, n);
+}
+
+template FloatMatrixRemovePrecision(n1, m1, precOld, precNew) {
+    assert(precOld > precNew);
+    signal input in[n1][m1];
+    component remPrec[n1][m1];
+    signal output out[n1][m1];
+    for(var i = 0; i < n1; i++) {
+        for (var j = 0; j < m1; j++) {
+            remPrec[i][j] = RemovePrecision(precNew, precOld);
+            remPrec[i][j].in <== in[i][j];
+            out[i][j] <== remPrec[i][j].out;
+        }
+    }
 }
