@@ -41,7 +41,7 @@ template verifyECDSABits(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, ALGO){
     // s_inv = s ^ -1 mod n
     signal sinv[CHUNK_NUMBER];
     
-    component modInv = BigModInvOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+    component modInv = BigModInv(CHUNK_SIZE, CHUNK_NUMBER);
     
     modInv.in <== signature[1];
     modInv.modulus <== order;
@@ -109,7 +109,7 @@ template verifyECDSABigInt(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     // s_inv = s ^ -1 mod n
     signal sinv[CHUNK_NUMBER];
     
-    component modInv = BigModInvOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+    component modInv = BigModInv(CHUNK_SIZE, CHUNK_NUMBER);
     
     modInv.in <== signature[1];
     modInv.modulus <== order;

@@ -6,6 +6,7 @@ include "./bigIntFunc.circom";
 include "./bigIntOverflow.circom";
 include "../int/arithmetic.circom";
 include "./karatsuba.circom";
+include "./wrappers.circom";
 
 // What BigInt in this lib means
 // We represent big number as array of chunks with some shunk_size (will be explained later) 
@@ -297,6 +298,7 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER){
 // calculates in[0] * in[1] % in[2], all in[i] has CHUNK_NUMBER chunks
 // if in[2] last chunk == 0, error will occur
 // use only for CHUNK_NUMBER == 2 ** x, otherwise error will occure
+// DEPRECATED
 template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[3][CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
@@ -318,6 +320,7 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER){
 // calculates in[0] * in[1] % in[2], all in[i] has CHUNK_NUMBER chunks
 // if in[2] last chunk == 0, error will occur
 // use only for CHUNK_NUMBER != 2 ** x, otherwise unefficient
+// DEPRECATED
 template BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[3][CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
@@ -378,70 +381,10 @@ template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
     }
 }
 
-// Computes CHUNK_NUMBER number power with EXP = exponent
-// EXP is default num, not chunked bigInt!!!
-// use for CHUNK_NUMBER == 2**n, otherwise error will occur
-template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
-    assert(EXP >= 2);
-    
-    signal input base[CHUNK_NUMBER];
-    signal input modulus[CHUNK_NUMBER];
-    signal input dummy;
-    
-    signal output out[CHUNK_NUMBER];
-    
-    var exp_process[256] = exp_to_bits(EXP);
-    
-    component muls[exp_process[0]];
-    component resultMuls[exp_process[1] - 1];
-    
-    for (var i = 0; i < exp_process[0]; i++){
-        muls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
-        muls[i].dummy <== dummy;
-        muls[i].in[2] <== modulus;
-    }
-    
-    for (var i = 0; i < exp_process[1] - 1; i++){
-        resultMuls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
-        resultMuls[i].dummy <== dummy;
-        resultMuls[i].in[2] <== modulus;
-    }
-    
-    muls[0].in[0] <== base;
-    muls[0].in[1] <== base;
-    
-    for (var i = 1; i < exp_process[0]; i++){
-        muls[i].in[0] <== muls[i - 1].out;
-        muls[i].in[1] <== muls[i - 1].out;
-    }
-    
-    for (var i = 0; i < exp_process[1] - 1; i++){
-        if (i == 0){
-            if (exp_process[i + 2] == 0){
-                resultMuls[i].in[0] <== base;
-            } else {
-                resultMuls[i].in[0] <== muls[exp_process[i + 2] - 1].out;
-            }
-            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
-        }
-        else {
-            resultMuls[i].in[0] <== resultMuls[i - 1].out;
-            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
-        }
-    }
-
-    if (exp_process[1] == 1){
-        out <== muls[exp_process[0] - 1].out;
-    } else {
-        out <== resultMuls[exp_process[1] - 2].out;
-    }
-}
-
-
 // use only for CHUNK_NUMBER == 2 ** x
 // calculates in ^ (-1) % modulus;
 // in, modulus has CHUNK_NUMBER
-template BigModInvOptimised(CHUNK_SIZE, CHUNK_NUMBER) {
+template BigModInv(CHUNK_SIZE, CHUNK_NUMBER) {
     assert(CHUNK_SIZE <= 252);
     signal input in[CHUNK_NUMBER];
     signal input modulus[CHUNK_NUMBER];
@@ -455,7 +398,7 @@ template BigModInvOptimised(CHUNK_SIZE, CHUNK_NUMBER) {
         out[i] <-- inv[i];
     }
     
-    component mult = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
+    component mult = BigMultModPWrapper(CHUNK_SIZE, CHUNK_NUMBER);
     mult.in[0] <== in;
     mult.in[1] <== out;
     mult.in[2] <== modulus;
@@ -667,6 +610,7 @@ template BigMultNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
 // a = bc + d so bc + d >= bc so d >= 0 
 // but we don`t need it for big nums, where we can`t have anyway
 // outs are mod with CHUNK_NUMBER_MODULUS and div with CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS + 1 chunks
+// DEPRECATED
 template BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     
     assert(CHUNK_NUMBER_BASE <= 253);
@@ -736,6 +680,7 @@ template BigModNonEqual(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
 // computes in1 * in2 mod modulus
 // in1, in2, modulus shouldn`t contain overflow
 // out is CHUNK_NUMBER_MODULUS chunks number
+// DEPRECATED
 template BigMultModPNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_NUMBER_MODULUS){
     signal input in1[CHUNK_NUMBER_GREATER];
     signal input in2[CHUNK_NUMBER_LESS];
@@ -778,24 +723,9 @@ template BigSubNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     out <== bigSub.out;
 }
 
-// scalar multiplication no carry
-// result will contain overflow
-// use it if u know that it will be no overflow or reduce it with RemoveOverflow from "./bigIntOverflow" or u know what are u doing
-template ScalarMultNoCarry(CHUNK_SIZE, CHUNK_NUMBER){
-    signal input in[CHUNK_NUMBER];
-    signal input scalar;
-    
-    signal output out[CHUNK_NUMBER];
-    
-    for (var i = 0; i < CHUNK_NUMBER; i++){
-        out[i] <== scalar * in[i];
-    }
-}
-
 // Computes CHUNK_NUMBER number power with EXP = exponent
 // EXP is default num, not chunked bigInt!!!
-// use for CHUNK_NUMBER!= 2**n, otherwise use "PowerMod"
-template PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
+template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
 
     assert(EXP >= 2);
     
@@ -811,23 +741,23 @@ template PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
     component resultMuls[exp_process[1] - 1];
     
     for (var i = 0; i < exp_process[0]; i++){
-        muls[i] = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+        muls[i] = BigMultModPWrapper(CHUNK_SIZE, CHUNK_NUMBER);
         muls[i].dummy <== dummy;
-        muls[i].in[2] <== modulus;
+        muls[i].modulus <== modulus;
     }
     
     for (var i = 0; i < exp_process[1] - 1; i++){
-        resultMuls[i] = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+        resultMuls[i] = BigMultModPWrapper(CHUNK_SIZE, CHUNK_NUMBER);
         resultMuls[i].dummy <== dummy;
-        resultMuls[i].in[2] <== modulus;
+        resultMuls[i].modulus <== modulus;
     }
     
     muls[0].in[0] <== base;
     muls[0].in[1] <== base;
     
     for (var i = 1; i < exp_process[0]; i++){
-        muls[i].in[0] <== muls[i - 1].out;
-        muls[i].in[1] <== muls[i - 1].out;
+        muls[i].in[0] <== muls[i - 1].mod;
+        muls[i].in[1] <== muls[i - 1].mod;
     }
     
     for (var i = 0; i < exp_process[1] - 1; i++){
@@ -835,23 +765,22 @@ template PowerModNonOptimised(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
             if (exp_process[i + 2] == 0){
                 resultMuls[i].in[0] <== base;
             } else {
-                resultMuls[i].in[0] <== muls[exp_process[i + 2] - 1].out;
+                resultMuls[i].in[0] <== muls[exp_process[i + 2] - 1].mod;
             }
-            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
+            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].mod;
         }
         else {
-            resultMuls[i].in[0] <== resultMuls[i - 1].out;
-            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].out;
+            resultMuls[i].in[0] <== resultMuls[i - 1].mod;
+            resultMuls[i].in[1] <== muls[exp_process[i + 3] - 1].mod;
         }
     }
 
     if (exp_process[1] == 1){
-        out <== muls[exp_process[0] - 1].out;
+        out <== muls[exp_process[0] - 1].mod;
     } else {
-        out <== resultMuls[exp_process[1] - 2].out;
+        out <== resultMuls[exp_process[1] - 2].mod;
     }
 }
-
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------
 // comparators for big numbers

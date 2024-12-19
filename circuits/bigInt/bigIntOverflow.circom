@@ -332,6 +332,8 @@ template RemoveOverflow(CHUNK_SIZE, CHUNK_NUMBER_OLD, CHUNK_NUMBER_NEW){
         }
         out[CHUNK_NUMBER_NEW - 1] <== getLastNBits[CHUNK_NUMBER_NEW - 2].div + in[CHUNK_NUMBER_NEW - 1] + dummy * dummy;
     }
+
+    // TODO: decide what to do : add Check for in and out equality or switch to Num2Bits
 }
 
 // computes modulus + in1 - in2 (WITHOUT % modulus!!!) with overflows, in1 and in2 shouldn`t have overflows and in1 < modulus, in2 < modulus!

@@ -144,40 +144,7 @@ template BigMultModPKaratsubaOpt(CHUNK_SIZE, CHUNK_NUMBER){
 
 }
 
-// Algo switcher
-template BigMultModPTmp(CHUNK_SIZE, CHUNK_NUMBER){
-    var isPowerOfTwo = 0;
-    for (var i = 0; i < CHUNK_NUMBER; i++){
-        if (CHUNK_NUMBER == 2 ** i){
-            isPowerOfTwo = 1;
-        }
-    }
-    signal input in[2][CHUNK_NUMBER];
-    signal input modulus[CHUNK_NUMBER];
-    signal input dummy;
-    
-    signal output div[CHUNK_NUMBER + 1];
-    signal output mod[CHUNK_NUMBER];
-
-    if (isPowerOfTwo == 1 && CHUNK_NUMBER >= 8){
-        component bigMultModPKaratsubaOpt = BigMultModPKaratsubaOpt(CHUNK_SIZE, CHUNK_NUMBER);
-        bigMultModPKaratsubaOpt.in <== in;
-        bigMultModPKaratsubaOpt.modulus <== modulus;
-        bigMultModPKaratsubaOpt.dummy <== dummy;
-
-        bigMultModPKaratsubaOpt.mod ==> mod;
-        bigMultModPKaratsubaOpt.div ==> div;
-    } else {
-        component bigMultModPOpt = BigMultModPOpt(CHUNK_SIZE, CHUNK_NUMBER);
-        bigMultModPOpt.in <== in;
-        bigMultModPOpt.modulus <== modulus;
-        bigMultModPOpt.dummy <== dummy;
-
-        bigMultModPOpt.mod ==> mod;
-        bigMultModPOpt.div ==> div;
-    }
-}
-
+// for different CHUNK_NUMBER
 template BigMultModPOptNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_NUMBER_MODULUS){
     signal input in1[CHUNK_NUMBER_GREATER];
     signal input in2[CHUNK_NUMBER_LESS];
@@ -249,6 +216,7 @@ template BigMultModPOptNonEqual(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_L
     }
 }
 
+// for base chunk number = 2 * CHUNK_NUMBER
 template BigModOpt(CHUNK_SIZE, CHUNK_NUMBER){
     signal input base[CHUNK_NUMBER * 2];
     signal input modulus[CHUNK_NUMBER];
@@ -267,6 +235,7 @@ template BigModOpt(CHUNK_SIZE, CHUNK_NUMBER){
 
 }
 
+// for any CHUNK_NUMBER for base and modulus
 template BigModNonEqualOpt(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     
     assert(CHUNK_NUMBER_BASE <= 253);
