@@ -28,7 +28,7 @@ template CalculatePolynomial(deg, prec, intprec) {
                 //log(i, coef[1] * powers[1] * (1<<((maxdeg-2)*prec)), powers[i]);
             }
             else if (i != 1 && i % (maxdeg - 1) == 1) {
-                cut[i \ (maxdeg - 1) - 1] = RemovePrecision(prec, maxdeg*prec);
+                cut[i \ (maxdeg - 1) - 1] = CutPrecisionNew(prec, maxdeg*prec);
                 cut[i \ (maxdeg - 1) - 1].in <== powers[i-1] * value;
                 powers[i] <== cut[i \ (maxdeg - 1) - 1].out;
                 sum.in[i] <== coef[i] * powers[i] * (1<<((maxdeg-2)*prec));
@@ -41,7 +41,7 @@ template CalculatePolynomial(deg, prec, intprec) {
             }
         }
     }
-    component lastCut = RemovePrecision(prec, maxdeg*prec);
+    component lastCut = CutPrecisionNew(prec, maxdeg*prec);
     lastCut.in <== sum.out;
     signal output out;
     out <== lastCut.out;

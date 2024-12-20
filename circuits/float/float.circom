@@ -3,6 +3,7 @@ pragma circom  2.1.6;
 include "../int/arithmetic.circom";
 include "./floatFunc.circom";
 include "../utils/switcher.circom";
+include "../bitify/comparators.circom";
 
 // There are some templates to operate with float nums
 // In our implementation, every float number has presicion n,
@@ -158,6 +159,43 @@ template RemovePrecision(n1, n2){
     out <== bits2Num.out;
 }
 
+template CutPrecisionNew(precNew, precOld) {
+    assert(precNew < precOld);
+
+    signal input in;
+    signal output out;
+
+    var absBits[253] = abs_in_bits(in);
+
+    signal absInBits[253];
+    component abs = Bits2Num(253);
+    for (var i = 0; i < 253; i++) {
+        absInBits[i] <-- absBits[i];
+        absInBits[i]*(1-absInBits[i]) === 0;
+        abs.in[i] <== absInBits[i];
+    }
+    (abs.out - in)*(abs.out + in) === 0;
+
+    component sign = IsEqual();
+    sign.in[0] <== abs.out;
+    sign.in[1] <== in;
+
+    component bits2Num = Bits2Num(253);
+    for (var i = 0; i < 253; i++) {
+        if (i > 252 - (precOld-precNew)) {
+            bits2Num.in[i] <== 0;
+        }
+        else {
+            bits2Num.in[i] <== absInBits[(precOld-precNew) + i];
+        }
+    }
+    component switcher = Switcher();
+    switcher.bool <== 1 - sign.out;
+    switcher.in[0] <== bits2Num.out * sign.out;
+    switcher.in[1] <== -bits2Num.out * (1 - sign.out);
+    out <== switcher.out[0];
+}
+
 // Computes e ^ x, where x is float by Teilor series.
 //      inf
 // e^x = ∑ (x^k)/(k!)
@@ -192,7 +230,7 @@ template Exp(n){
         }
     }
 
-    component reduce = RemovePrecision(n, 2 * n);
+    component reduce = CutPrecisionNew(n, 2 * n);
     reduce.in <== sum.out;
     out <== reduce.out;
 }

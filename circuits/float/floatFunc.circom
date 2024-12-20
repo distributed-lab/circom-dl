@@ -338,3 +338,15 @@ function precompute_exp_constants(k, n){
 
     return res;
 }
+
+function abs_in_bits(value) {
+    var out[253];
+    var x;
+    if (0 - value > value) {
+        value = -value;
+    }
+    for (var i = 0; i < 253; i++) {
+        out[i] = (value >> i) & 1;
+    }
+    return out;
+}
