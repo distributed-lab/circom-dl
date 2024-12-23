@@ -97,3 +97,15 @@ template BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER){
         }
     }
 }
+
+// multiplying number with CHUNK_NUMBER by scalar, ignoring overflow
+template ScalarMultOverflow(CHUNK_NUMBER){
+    signal input in[CHUNK_NUMBER];
+    signal input scalar;
+    
+    signal output out[CHUNK_NUMBER];
+    
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        out[i] <== scalar * in[i];
+    }
+}

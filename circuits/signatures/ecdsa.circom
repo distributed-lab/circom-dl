@@ -16,7 +16,6 @@ include "../bigInt/bigInt.circom";
 // (x1, y1) = h * s_inv * G + r * s_inv * (x, y)
 // x1 === r
 template verifyECDSABits(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, ALGO){
-    assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
     
     signal input pubkey[2][CHUNK_NUMBER];
     signal input signature[2][CHUNK_NUMBER];
@@ -95,7 +94,6 @@ template verifyECDSABits(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, ALGO){
 // (x1, y1) = h * s_inv * G + r * s_inv * (x, y)
 // x1 === r
 template verifyECDSABigInt(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
-    assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
     
     signal input pubkey[2][CHUNK_NUMBER];
     signal input signature[2][CHUNK_NUMBER];

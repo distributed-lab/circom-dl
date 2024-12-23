@@ -1939,3 +1939,4 @@ template EllipicCurveScalarPrecomputeMultiplication(CHUNK_SIZE, CHUNK_NUMBER, A,
         
     }
 }
+

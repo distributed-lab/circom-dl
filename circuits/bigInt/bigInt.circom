@@ -404,9 +404,9 @@ template BigModInv(CHUNK_SIZE, CHUNK_NUMBER) {
     mult.in[2] <== modulus;
     mult.dummy <== dummy;
     
-    mult.out[0] === 1;
+    mult.mod[0] === 1;
     for (var i = 1; i < CHUNK_NUMBER; i++) {
-        mult.out[i] === 0;
+        mult.mod[i] === 0;
     }
 }
 
