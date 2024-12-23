@@ -16,7 +16,6 @@ include "../bigInt/bigInt.circom";
 // (x1, y1) = h * s_inv * G + r * s_inv * (x, y)
 // x1 === r
 template verifyECDSABits(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, ALGO){
-    assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
     
     signal input pubkey[2][CHUNK_NUMBER];
     signal input signature[2][CHUNK_NUMBER];
@@ -49,14 +48,14 @@ template verifyECDSABits(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, ALGO){
     modInv.out ==> sinv;
     
     // (s ^ -1 mod n) * h mod n
-    component mult = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
+    component mult = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
     mult.in[0] <== sinv;
     mult.in[1] <== hashedChunked;
     mult.in[2] <== order;
     mult.dummy <== dummy;
 
     // (s ^ -1 mod n) * r mod n
-    component mult2 = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
+    component mult2 = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
     mult2.in[0] <== sinv;
     mult2.in[1] <== signature[0];
     mult2.in[2] <== order;
@@ -95,7 +94,6 @@ template verifyECDSABits(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, ALGO){
 // (x1, y1) = h * s_inv * G + r * s_inv * (x, y)
 // x1 === r
 template verifyECDSABigInt(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
-    assert(CHUNK_SIZE == 64 && CHUNK_NUMBER == 4);
     
     signal input pubkey[2][CHUNK_NUMBER];
     signal input signature[2][CHUNK_NUMBER];
@@ -117,14 +115,14 @@ template verifyECDSABigInt(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     modInv.out ==> sinv;
     
     // (s ^ -1 mod n) * h mod n
-    component mult = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
+    component mult = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
     mult.in[0] <== sinv;
     mult.in[1] <== hashed;
     mult.in[2] <== order;
     mult.dummy <== dummy;
 
     // (s ^ -1 mod n) * r mod n
-    component mult2 = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER);
+    component mult2 = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
     mult2.in[0] <== sinv;
     mult2.in[1] <== signature[0];
     mult2.in[2] <== order;
