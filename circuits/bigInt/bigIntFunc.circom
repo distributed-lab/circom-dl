@@ -3,7 +3,7 @@ pragma circom 2.1.6;
 include "./dontOpenPlease.circom";
 
 
-function isNegative(x) {
+function is_negative(x) {
     return x > 10944121435919637611123202872628637544274182200208017171849102093287904247808 ? 1 : 0;
 }
 
@@ -75,7 +75,7 @@ function getProperRepresentation(m, n, k, in) {
         for (var j = 0; j < 200; j++) {
             pieces[i][j] = 0;
         }
-        if (isNegative(in[i]) == 1) {
+        if (is_negative(in[i]) == 1) {
             var negPieces[200] = splitOverflowedRegister(m, n, - 1 * in[i]);
             for (var j = 0; j < ceilMN; j++) {
                 pieces[i][j] =  - 1 * negPieces[j];
@@ -109,7 +109,7 @@ function getProperRepresentation(m, n, k, in) {
             }
         }
         
-        if (isNegative(thisRegisterValue) == 1) {
+        if (is_negative(thisRegisterValue) == 1) {
             var thisRegisterAbs =  - 1 * thisRegisterValue;
             out[registerIdx] = (1 << n) - (thisRegisterAbs % (1 << n));
             carries[registerIdx] =  - 1 * (thisRegisterAbs >> n) - 1;
@@ -617,7 +617,7 @@ function exp_to_bits(exp){
 
 // 2.5 * a ** 1,6 < a * b
 function is_karatsuba_optimal(a, b){
-    if (a < 8 ){
+    if (a < 8){
         return 0;
     } else {
         var a_coeff = get_a_coeff(a);
@@ -627,6 +627,69 @@ function is_karatsuba_optimal(a, b){
             return 1;
         }
     }
-
+    
     return 0;
+}
+
+function is_negative_chunk(x, n) {
+    var x2 = x;
+    for (var i = 0; i < n; i++){
+        x2 = x2 \ 2;
+    }
+    if (x2 == 0){
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+function reduce_overflow_signed(n, k, k2, max_n, in){
+    var out[200];
+    var clone[200];
+    for (var i = 0; i < k; i++){
+        clone[i] = in[i];
+    }
+    for (var i = 0; i < k2; i++){
+        if (is_negative_chunk(clone[i], max_n) == 0){
+            out[i] = clone[i] % 2 ** n;
+            clone[i + 1] += clone[i] \ 2 ** n;
+        } else {
+            if ((- 1 * clone[i]) % 2 ** n != 0){
+                out[i] = 2 ** n - (- clone[i]) % 2 ** n;
+                clone[i + 1] -= 1 + (- clone[i]) \ 2 ** n;
+            } else {
+                out[i] = 0;
+                clone[i + 1] -= (- clone[i]) \ 2 ** n;
+            }
+        }
+    }
+    out[199] = 1;
+
+    if (clone[k2] != 0){
+
+        for (var i = 0; i < k; i++){
+            clone[i] = -in[i];
+        }
+        for (var i = k; i < k2 + 3; i++){
+            clone[i] = 0;
+        }
+
+        for (var i = 0; i < k2; i++){
+            if (is_negative_chunk(clone[i], max_n) == 0){
+                out[i] = clone[i] % 2 ** n;
+                clone[i + 1] += clone[i] \ 2 ** n;
+            } else {
+                if ((- 1 * clone[i]) % 2 ** n != 0){
+                    out[i] = 2 ** n - (- clone[i]) % 2 ** n;
+                    clone[i + 1] -= 1 + (- clone[i]) \ 2 ** n;
+                } else {
+                    out[i] = 0;
+                    clone[i + 1] -= (- clone[i]) \ 2 ** n;
+                }
+            }
+        }
+        out[199] = 0;
+    }
+    
+    return out;
 }

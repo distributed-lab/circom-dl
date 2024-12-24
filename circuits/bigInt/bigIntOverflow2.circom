@@ -109,3 +109,28 @@ template ScalarMultOverflow(CHUNK_NUMBER){
         out[i] <== scalar * in[i];
     }
 }
+
+// computes modulus + in1 - in2 (WITHOUT % modulus!!!) with overflows, in1 and in2 shouldn`t have overflows and in1 < modulus, in2 < modulus!
+// use only if you undestand what are you doing!!!
+template BigSubModP(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in1[CHUNK_NUMBER];
+    signal input in2[CHUNK_NUMBER];
+    signal input modulus[CHUNK_NUMBER];
+    signal input dummy;
+
+    dummy * dummy === 0;
+
+    signal output out[CHUNK_NUMBER];
+
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        if (i == 0){
+            out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] + dummy * dummy;
+        } else {
+            if (i == CHUNK_NUMBER - 1){
+                out[i] <== modulus[i] + in1[i] - in2[i] - 1 + dummy * dummy;
+            } else {
+                out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] - 1 + dummy * dummy;
+            }
+        }
+    }
+}

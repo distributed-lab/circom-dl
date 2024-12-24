@@ -325,7 +325,6 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
     }
 }
 
-
 // calculates in ^ (-1) % modulus;
 // in, modulus has CHUNK_NUMBER
 template BigModInv(CHUNK_SIZE, CHUNK_NUMBER) {
