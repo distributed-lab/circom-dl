@@ -21,6 +21,20 @@ template SumPool(k, n, m) {
     //}
 }
 
+template AveragePooling(k, n, m) {
+    signal input in[k][n][m];
+    signal output out[k][n \ 2][m \ 2];
+
+    signal inv4 <== getInverseFloat(4);
+    for (var r = 0; r < k; r++) {
+        for (var i = 0; i < n\2; i++) {
+            for (var j = 0; j < m\2; j++) {
+                out[r][i][j] <== inv4 * (in[r][2*i][2*j] + in[r][2*i+1][2*j] + in[r][2*i][2*j+1] + in[r][2*i+1][2*j+1]);
+            }
+        }
+    }
+}
+
 template SqueezeAndExcitation(w, h, c, gammaC, precNew, precOld) {
     signal input in[c][w][h];
     signal input W1[gammaC][c];
