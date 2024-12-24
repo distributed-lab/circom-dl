@@ -14,7 +14,7 @@ template ReLU() {
 
 //Saves about 254 constraints
 template ReLUwithCutPrecision(precNew, precOld) {
-   assert (precNew < precOld);
+    assert (precNew < precOld);
     
     signal input in;
     signal output out;
@@ -31,4 +31,21 @@ template ReLUwithCutPrecision(precNew, precOld) {
     }
 
     out <== bits2Num.out * (1-num2Bits.out[253]);
+}
+
+template MatrixReLUwithCutPrecision(n, m, precNew, precOld) {
+    assert (precNew < precOld);
+
+    signal input in[n][m];
+    signal output out[n][m];
+
+    component relu[n][m];
+
+    for (var i = 0; i < n; i++) {
+        for (var j = 0; j < m; j++) {
+            relu[i][j] = parallel ReLUwithCutPrecision(precNew, precOld);
+            relu[i][j].in <== in[i][j];
+            out[i][j] <== relu[i][j].out;
+        }
+    }
 }
