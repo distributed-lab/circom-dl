@@ -12,9 +12,7 @@ template Num2Bits(LEN){
     signal output out[LEN];
     for (var i = 0; i < LEN; i++) {
         out[i] <-- (in >> i) & 1;
-        if (i != LEN - 1){
-            out[i] * (out[i] - 1) === 0;
-        }
+        out[i] * (out[i] - 1) === 0;
     }
     signal sum[LEN];
     sum[0] <== out[0] * out[0];
