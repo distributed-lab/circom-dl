@@ -224,7 +224,7 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in[2][CHUNK_NUMBER];
     signal input dummy;
     signal output out[2][CHUNK_NUMBER];
-    
+
     var long_3[CHUNK_NUMBER];
     long_3[0] = 3;
     var lamb_num[200] = long_add_mod(CHUNK_SIZE, CHUNK_NUMBER, A, prod_mod(CHUNK_SIZE, CHUNK_NUMBER, long_3, prod_mod(CHUNK_SIZE, CHUNK_NUMBER, in[0], in[0], P), P), P);
@@ -596,11 +596,6 @@ template EllipicCurveScalarGeneratorMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
             }
         }
     }
-
-    for (var i = 0; i < 32; i++){
-        log(getSumOfNElements[i][0][0].out);
-    }
-
     
     signal additionPoints[parts][2][CHUNK_NUMBER];
     for (var part_idx = 0; part_idx < parts; part_idx++){
