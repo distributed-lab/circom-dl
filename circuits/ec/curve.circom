@@ -21,7 +21,44 @@ include "../bitify/bitify.circom";
 include "../bitify/comparators.circom";
 include "../int/arithmetic.circom";
 
-// Check for point 
+// Operation for any Weierstrass prime-field eliptic curve (for now 256-bit)
+// A, B, P in every function - params of needed curve, chunked the same as every other chunking (64 4 for now)
+// Example usage of operation (those are params for secp256k1 ec):
+// EllipticCurveDoubleOptimised(64, 4, [0,0,0,0], [7,0,0,0], [18446744069414583343, 18446744073709551615, 18446744073709551615, 18446744073709551615]);
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// To add a new curve u should do next steps:
+// Get curve params(A, B, P) in chunked representation
+// Add order, dummyPoint (G * 2**256), and generator to "./get.circom" for chunking:
+// if (CHUNK_NUMBER == 4){
+//     if (P[0] == 18446744069414583343 && P[1] == 18446744073709551615 && P[2] == 18446744073709551615 && P[3] == 18446744073709551615){
+//         gen[0] <== [6481385041966929816, 188021827762530521, 6170039885052185351, 8772561819708210092];
+//         gen[1] <== [11261198710074299576, 18237243440184513561, 6747795201694173352, 5204712524664259685];
+//     }
+// }
+// This is example for gen for 64 4 chunked secp256r1 curve
+// This steps can be simplified by "../../helpers/generate_get_for_new_curve.py", but it can be broken in some cases, make a copy of "./get.circom" before it 
+// But for new curve with already existing chunks should work fine
+// Won`t work fine for new chunking, or already existing curve, will be fixed later
+// Use "../../helpers/get.py" to get str to paste, this one works fine, but it isn`t pasting,, u should do it by yourself
+// Change first 8 lines with your parameters and get your code lines.
+// Change params at 4..8 lines in "../../helpers/generate_pow_table_for_curve.py" for your curve params, then execute script from root, this will create file in ./powers
+// Also change chunking in 140 line and curve name at 145
+// execute script from root, it will create new file in "./powers", import it here
+// include "./powers/p256pows.circom"; for example
+// add same case for EllipicCurveScalarGeneratorMult template:
+//   var powers[parts][2 ** STRIDE][2][CHUNK_NUMBER];
+// if (CHUNK_NUMBER == 4){
+//     if (P[0] == 18446744069414583343 && P[1] == 18446744073709551615 && P[2] == 18446744073709551615 && P[3] == 18446744073709551615){
+//         powers = get_g_pow_stride8_table_secp256k1(CHUNK_SIZE, CHUNK_NUMBER);
+//     }
+// ...
+// } 
+// add here your chunking and get generated pow table
+// 
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Those are helpers template, don`t use them outside without knowing what are u doing!!!
+// Check is input is point on curve
+// (x^3 + a * x + b - y * 2 % p) === 0
 template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in[2][CHUNK_NUMBER];
     signal input dummy;
@@ -215,6 +252,7 @@ template EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WIND
 }
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Use next templates for elliptic curve oprations
 
 // λ = (3 * x ** 2 + a) / (2 * y)
 // x3 = λ * λ - 2 * x
@@ -299,10 +337,10 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 // Precompute (see "PrecomputePipinger" template)
 // Convert each WINDOW_SIZE bits into num IDX, double WINDOW_SIZE times, add to result IDX * G (from precomputes), repeat
 // Double add and algo complexity:
-// 255 doubles + 256 adds
+// 255 doubles + 255 adds
 // Our algo complexity:
-// 256 - WINDOW_SIZE doubles, 256 / WINDOW_SIZE adds, 2 ** WINDOW_SIZE - 2 adds and doubles for precompute
-// for 256 curve best WINDOW_SIZE = 4 with 330 operations with points
+// 256 - WINDOW_SIZE doubles, (256 - WINDOW_SIZE) / WINDOW_SIZE adds, 2 ** WINDOW_SIZE - 2 adds and doubles for precompute
+// for 256 curve best WINDOW_SIZE = 4 with 252 + 63 + 14 = 329 operations with points
 template EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE){
     
     signal input in[2][CHUNK_NUMBER];
@@ -471,6 +509,7 @@ template EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE)
 // And don`t use for 43 * 6 % 8 == 2, for example
 // This chunking will be added late
 // Complexity is field \ 8 - 1 additions
+// For 256 field is 31 additions
 template EllipicCurveScalarGeneratorMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     signal input scalar[CHUNK_NUMBER];

@@ -123,6 +123,11 @@ template BigIntIsZero(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER) {
 }
 
 // checks for in % p == 0
+// Works with overflowed signed chunks
+// To handle megative values we use sign
+// Sign is var and can be changed, but it should be a problem
+// Sign change means that we can calculate for -in instead of in, 
+// But if in % p == 0 means that -in % p == 0 too, so no exploit here
 template BigIntIsZeroModP(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NUMBER, CHUNK_NUMBER_MODULUS){
     signal input in[CHUNK_NUMBER];
     signal input modulus[CHUNK_NUMBER_MODULUS];
@@ -166,4 +171,28 @@ template BigIntIsZeroModP(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NU
         isZero.in[i] <== mult.out[i];
     }
     
+}
+
+// force equal by all chunks with same position
+// try to avoid using this for big number of chunks, use BigIntIsZero instead
+// use this for if u need to check for 2 bigints equal and have same overflow (or don`t have it)
+template BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER) {
+    signal input in[2][CHUNK_NUMBER];
+    
+    signal output out;
+    
+    component isEqual[CHUNK_NUMBER];
+    signal equalResults[CHUNK_NUMBER];
+    
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        isEqual[i] = IsEqual();
+        isEqual[i].in[0] <== in[0][i];
+        isEqual[i].in[1] <== in[1][i];
+        if (i == 0){
+            equalResults[i] <== isEqual[i].out;
+        } else {
+            equalResults[i] <== equalResults[i - 1] * isEqual[i].out;
+        }
+    }
+    out <== equalResults[CHUNK_NUMBER - 1];
 }

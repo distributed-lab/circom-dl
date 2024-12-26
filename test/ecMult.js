@@ -190,46 +190,6 @@ async function testGenMultBrainpoolP256r1(input1, circuit){
     }
 }
 
-async function testPrecomputeMult(input1, input2, input3,circuit){
-    const P = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2fn;
-    const A = 0n;
-    const B = 7n;
-
-    let json = path.join(__dirname, `./precompute.json`);
-    const data = await fs.promises.readFile(json, 'utf8');
-    const input = JSON.parse(data);
-
-    let mult = point_scalar_mul(input1, input2, input3, 0n, 115792089237316195423570985008687907853269984665640564039457584007908834671663n)
-
-    let real_result = bigintToArray(64, 4, mult.x).concat(bigintToArray(64, 4, mult.y));
-
-    const w = await circuit.calculateWitness({scalar: bigintToArray(64, 4, input3), in: [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)], dummy: 0n, powers: input.powers}, true);
-
-    let circuit_result = w.slice(1, 1+8);
-
-    for (var i = 0; i < 8; i++){
-        assert(circuit_result[i] == real_result[i], `${real_result[i]} ${circuit_result[i]}`);
-    }
-}
-
-async function testPrecomputeMultBrainpoolP256r1(input1, input2, input3,circuit){
-    let json = path.join(__dirname, `./precomputeBrainpool.json`);
-    const data = await fs.promises.readFile(json, 'utf8');
-    const input = JSON.parse(data);
-
-    let mult = point_scalar_mul(input1, input2, input3, 56698187605326110043627228396178346077120614539475214109386828188763884139993n, 76884956397045344220809746629001649093037950200943055203735601445031516197751n)
-
-    let real_result = bigintToArray(64, 4, mult.x).concat(bigintToArray(64, 4, mult.y));
-
-    const w = await circuit.calculateWitness({scalar: bigintToArray(64, 4, input3), in: [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)], dummy: 0n, powers: input.powers}, true);
-
-    let circuit_result = w.slice(1, 1+8);
-
-    for (var i = 0; i < 8; i++){
-        assert(circuit_result[i] == real_result[i], `${real_result[i]} ${circuit_result[i]}`);
-    }
-}
-
 describe("Secp256k1 generator multiplication test", function () {
 
     this.timeout(10000000);
@@ -278,7 +238,7 @@ describe("Scalar point multiplication test", function () {
     });
 
     it("2 * (55066263022277343669578718895168534326250603453777594175500187360389116729240; 32670510020758816978083085130507043184471273380659243275938904335757337482424)", async function () {
-        await testScalarMult(2n, 55066263022277343669578718895168534326250603453777594175500187360389116729240n, 32670510020758816978083085130507043184471273380659243275938904335757337482424n, circuit);
+        await testScalarMult(55066263022277343669578718895168534326250603453777594175500187360389116729240n, 32670510020758816978083085130507043184471273380659243275938904335757337482424n, 2n, circuit);
     });
 
     it("115792089237316195417293883273301227131288926373708328631619254798622859984896 * (89565891926547004231252920425935692360644145829622209833684329913297188986597;12158399299693830322967808612713398636155367887041628176798871954788371653930)", async function () {
@@ -298,38 +258,6 @@ describe("BrainpoolP256r1 scalar point multiplication test", function () {
 
     it("115792089237316195417293883273301227131288926373708328631619254798622859984896 * (52575969560191351534542091466380106041028581718640875237441073011616025668110;24843789797109572893402439557748964186754677981311543350228155441542769376468)", async function () {
         await testScalarMultBrainpoolP256r1(52575969560191351534542091466380106041028581718640875237441073011616025668110n, 24843789797109572893402439557748964186754677981311543350228155441542769376468n,115792089237316195417293883273301227131288926373708328631619254798622859984896n, circuit);
-    });
-
-});
-
-// If u want change this tests, put correct table at precompute.json
-describe("Precompute scalar point multiplication test", function () {
-
-    this.timeout(10000000);
-    let circuit;
-
-    before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "ec", "precomputeMult.circom"));
-    });
-
-    it("4 * (55066263022277343669578718895168534326250603453777594175500187360389116729240; 32670510020758816978083085130507043184471273380659243275938904335757337482424)", async function () {
-        await testPrecomputeMult(55066263022277343669578718895168534326250603453777594175500187360389116729240n, 32670510020758816978083085130507043184471273380659243275938904335757337482424n, 4n, circuit);
-    });
-
-});
-
-// If u want change this tests, put correct table at precompute2.json
-describe("Precompute scalar point multiplication test BrainpoolP256r1", function () {
-
-    this.timeout(10000000);
-    let circuit;
-
-    before(async () => {
-        circuit = await wasm_tester(path.join(__dirname, "circuits", "ec", "precomputeMultBrainpoolP256r1.circom"));
-    });
-
-    it("115792089237316195417293883273301227131288926373708328631619254798622859984896n * (52575969560191351534542091466380106041028581718640875237441073011616025668110n; 24843789797109572893402439557748964186754677981311543350228155441542769376468n)", async function () {
-        await testPrecomputeMultBrainpoolP256r1(52575969560191351534542091466380106041028581718640875237441073011616025668110n, 24843789797109572893402439557748964186754677981311543350228155441542769376468n,115792089237316195417293883273301227131288926373708328631619254798622859984896n, circuit);
     });
 
 });

@@ -92,18 +92,22 @@ template RsaVerifyPkcs1v15(CHUNK_SIZE, CHUNK_NUMBER, EXP, HASH_TYPE) {
         component getBits = Num2Bits(CHUNK_SIZE);
         component getDiv = Bits2Num(CHUNK_SIZE - 32);
         getBits.in <== pm.out[2];
+
         for (var i = 0; i < 32; i++){
             getBits.out[i] === hashed[31 - i];
         }
+
         for (var i = 32; i < CHUNK_SIZE; i++){
-            getDiv.in[i - 32] <== hashed[i];
+            getDiv.in[i - 32] <== getBits.out[i];
         }
-        getDiv.out === 83887124; //0x5000414
+        getDiv.out === 83887124;
+        //0x5000414
 
         pm.out[3] === 650212878678426138;
         pm.out[4] === 18446744069417738544;
-        for (var i = 5; i < CHUNK_NUMBER-1; i++) {
-            pm.out[i] === 18446744073709551615; // 0b1111111111111111111111111111111111111111111111111111111111111111
+        for (var i = 5; i < CHUNK_NUMBER - 1; i++) {
+            pm.out[i] === 18446744073709551615; 
+            // 0b1111111111111111111111111111111111111111111111111111111111111111
         }
         pm.out[CHUNK_NUMBER - 1] === 562949953421311;
     }

@@ -203,7 +203,7 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
     signal input in2[CHUNK_NUMBER_LESS];
     signal input modulus[CHUNK_NUMBER_MODULUS];
     signal input dummy;
-    
+
     var CHUNK_NUMBER_BASE = CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS;
     var CHUNK_NUMBER_DIV = CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS + 1;
 
@@ -216,7 +216,6 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
     mult.dummy <== dummy;
 
     var reduced[200] = reduce_overflow(CHUNK_SIZE, CHUNK_NUMBER_BASE - 1, CHUNK_NUMBER_BASE, mult.out);
-
     var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV - 1, reduced, modulus);
     
     for (var i = 0; i < CHUNK_NUMBER_DIV; i++){
@@ -266,7 +265,7 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
 // EXP is default num, not chunked bigInt!!!
 // CHUNK_NUMBER_BASE == CHUNK_NUMBER_MODULUS because other options don`t have much sense:
 // if CHUNK_NUMBER_BASE > CHUNK_NUMBER_MODULUS, do one mod before and get less constraints
-// if CHUNK_NUMBER_BASE < CHUNK_NUMBER_MODULUS, just put zero in first one, this won`t affect at constraints
+// if CHUNK_NUMBER_BASE < CHUNK_NUMBER_MODULUS, just put zero in first chunk, this won`t affect at constraints
 // we will get CHUNK_NUMBER_MODULUS num after first multiplication anyway
 template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
 
@@ -294,7 +293,7 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
         resultMuls[i].dummy <== dummy;
         resultMuls[i].modulus <== modulus;
     }
-    
+
     muls[0].in1 <== base;
     muls[0].in2 <== base;
     
