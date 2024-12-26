@@ -1,8 +1,8 @@
 pragma circom  2.1.6;
 
-include "../ec/curve2.circom";
+include "../ec/curve.circom";
 include "../ec/get.circom";
-include "../bigInt/bigInt2.circom";
+include "../bigInt/bigInt.circom";
 
 // Here is ecdsa signature verification
 // For now, only 256 bit curves are allowed with chunking 64 4

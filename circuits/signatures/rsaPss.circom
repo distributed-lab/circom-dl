@@ -1,6 +1,6 @@
 pragma circom  2.1.6;
 
-include "../bigInt/bigInt2.circom";
+include "../bigInt/bigInt.circom";
 include "./mgf1.circom";
 include "../bitify/bitGates.circom";
 include "../hasher/hash.circom";

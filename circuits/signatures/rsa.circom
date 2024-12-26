@@ -1,6 +1,6 @@
 pragma circom 2.1.6;
 
-include "../bigInt/bigInt2.circom";
+include "../bigInt/bigInt.circom";
 include "../bitify/bitify.circom";
 include "../int/arithmetic.circom";
 
