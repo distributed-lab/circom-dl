@@ -63,20 +63,20 @@ template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in[2][CHUNK_NUMBER];
     signal input dummy;
     
-    component square = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
-    square.in1 <== in[0];
-    square.in2 <== in[0];
-    square.dummy <== dummy;
+    component squareX = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
+    squareX.in1 <== in[0];
+    squareX.in2 <== in[0];
+    squareX.dummy <== dummy;
     
-    component cube = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
-    cube.in1 <== square.out;
-    cube.in2 <== in[0];
-    cube.dummy <== dummy;
+    component cubeX = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
+    cubeX.in1 <== squareX.out;
+    cubeX.in2 <== in[0];
+    cubeX.dummy <== dummy;
     
-    component square2 = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
-    square2.in1 <== in[1];
-    square2.in2 <== in[1];
-    square2.dummy <== dummy;
+    component squareY = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
+    squareY.in1 <== in[1];
+    squareY.in2 <== in[1];
+    squareY.dummy <== dummy;
     
     component coefMult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     coefMult.in1 <== in[0];
@@ -85,13 +85,13 @@ template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     component isZeroModP = BigIntIsZeroModP(CHUNK_SIZE, CHUNK_SIZE * 3 + 2 * CHUNK_NUMBER, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER * 3, CHUNK_NUMBER);
     for (var i = 0; i < CHUNK_NUMBER; i++){
-        isZeroModP.in[i] <== cube.out[i] + coefMult.out[i] - square2.out[i] + B[i];
+        isZeroModP.in[i] <== cubeX.out[i] + coefMult.out[i] - squareY.out[i] + B[i];
     }
     for (var i = CHUNK_NUMBER; i < CHUNK_NUMBER * 2 - 1; i++){
-        isZeroModP.in[i] <== cube.out[i] + coefMult.out[i] - square2.out[i];
+        isZeroModP.in[i] <== cubeX.out[i] + coefMult.out[i] - squareY.out[i];
     }
     for (var i = CHUNK_NUMBER * 2 - 1; i < CHUNK_NUMBER * 3 - 2; i++){
-        isZeroModP.in[i] <== cube.out[i];
+        isZeroModP.in[i] <== cubeX.out[i];
     }
     isZeroModP.modulus <== P;
     isZeroModP.dummy <== dummy;
@@ -107,13 +107,13 @@ template PointOnTangent(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in2[2][CHUNK_NUMBER];
     signal input dummy;
     
-    component square = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
-    square.in1 <== in1[0];
-    square.in2 <== in1[0];
-    square.dummy <== dummy;
+    component squareX = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
+    squareX.in1 <== in1[0];
+    squareX.in2 <== in1[0];
+    squareX.dummy <== dummy;
     
     component scalarMult = ScalarMultOverflow(CHUNK_NUMBER * 2 - 1);
-    scalarMult.in <== square.out;
+    scalarMult.in <== squareX.out;
     scalarMult.scalar <== 3;
     
     component bigAdd = BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
@@ -286,10 +286,10 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     onCurveCheck.in <== out;
     onCurveCheck.dummy <== dummy;
     
-    // In circom pairing lib, there were 2 other checks checks. 
+    // In circom pairing lib, there were 2 other checks. 
     // First is for each chunk is in range [0, 2**CHUNK_NUMBER).
     // Which is just overflow check, and it isn`t nessesary because we will get valid results even with overflow inputs
-    // But it`s recommended to to this check for the last point in all ec operations (last add in ecdsa, for example)
+    // But it`s recommended to do this check for the last point in all ec operations (last add in ecdsa, for example)
     // Second is check for out[0] and out[1] both less than P. Same as previous, this one shouldn`t add any problems, 
     // cause potential overflow over circom field will ruin onCurve check, and just chunk overflow isn`t a real problem for us,
     // cause we work with overflowed values.
