@@ -35,11 +35,11 @@ include "../int/arithmetic.circom";
 //         gen[1] <== [11261198710074299576, 18237243440184513561, 6747795201694173352, 5204712524664259685];
 //     }
 // }
-// This is example for gen for 64 4 chunked secp256r1 curve
+// This is example for generator for 64 4 chunked secp256r1 curve
 // This steps can be simplified by "../../helpers/generate_get_for_new_curve.py", but it can be broken in some cases, make a copy of "./get.circom" before it 
 // But for new curve with already existing chunks should work fine
 // Won`t work fine for new chunking, or already existing curve, will be fixed later
-// Use "../../helpers/get.py" to get str to paste, this one works fine, but it isn`t pasting,, u should do it by yourself
+// Use "../../helpers/get.py" to get str to paste, this one works fine, but it isn`t pasting, u should do it by yourself
 // Change first 8 lines with your parameters and get your code lines.
 // Change params at 4..8 lines in "../../helpers/generate_pow_table_for_curve.py" for your curve params, then execute script from root, this will create file in ./powers
 // Also change chunking in 140 line and curve name at 145
