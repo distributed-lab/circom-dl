@@ -115,6 +115,7 @@ template verifyECDSABigInt(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     modInv.out ==> sinv;
     
     // (s ^ -1 mod n) * h mod n
+<<<<<<< HEAD
     component mult = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
     mult.in1 <== sinv;
     mult.in2 <== hashed;
@@ -126,6 +127,19 @@ template verifyECDSABigInt(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mult2.in1 <== sinv;
     mult2.in2 <== signature[0];
     mult2.modulus <== order;
+=======
+    component mult = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+    mult.in[0] <== sinv;
+    mult.in[1] <== hashed;
+    mult.in[2] <== order;
+    mult.dummy <== dummy;
+
+    // (s ^ -1 mod n) * r mod n
+    component mult2 = BigMultModPNonOptimised(CHUNK_SIZE, CHUNK_NUMBER);
+    mult2.in[0] <== sinv;
+    mult2.in[1] <== signature[0];
+    mult2.in[2] <== order;
+>>>>>>> origin/dev
     mult2.dummy <== dummy;
     
     // h * s_inv * G
