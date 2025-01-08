@@ -20,7 +20,7 @@ template Mgf1Sha384(SEED_LEN, MASK_LEN) { //in bytes
     component num2Bits[ITERATIONS];
 
     for (var i = 0; i < ITERATIONS; i++) {
-        sha384[i] = ShaHashChunks(1 , 384); //32 bits for counter
+        sha384[i] = ShaHashChunks(1, 384); //32 bits for counter
         sha384[i].dummy <== dummy;
         num2Bits[i] = Num2Bits(32);
     }

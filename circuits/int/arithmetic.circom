@@ -2,7 +2,9 @@ pragma circom 2.1.6;
 
 include "../bitify/comparators.circom";
 include "../bitify/bitify.circom";
+include "../utils/switcher.circom";
 
+ 
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Some templates for num operations
 
@@ -123,7 +125,40 @@ template Log2Ceil(RANGE){
 
 // computes last bit of num with any bit len for 2 constraints
 // returns bit (0 or 1) and div = num \ 2
+// To get last bit we have to take 2 last bits
+// This is because we work in field:
+// for example, lets take sammer field p = 17
+// in = 5
+// There are 2 options:
+// bit = 1, div = 2, which is correct and intuitive
+// but we calculate it with var, so anything can be put
+// and if we put bit = 0, and div = 11:
+// 11 * 2 + 0 = 22
+// we work in field => 22 = 22 % 17 = 5;
+// 5 === 5, pass will check
+// to avoid this, we should take next bit, and check full result
+// if any of bits was changed, it won`t pass
 template GetLastBit(){
+    signal input in;
+    signal output bit;
+    signal output div;
+    
+    component getLastBits[2];
+    getLastBits[0] = GetLastBitUnsecure();
+    getLastBits[0].in <== in;
+    getLastBits[1] = GetLastBitUnsecure();
+    getLastBits[1].in <==  getLastBits[0].div;
+
+    getLastBits[1].div * 4 + getLastBits[1].bit * 2 + getLastBits[0].bit === in;
+
+    div <== getLastBits[0].div;
+    bit <== getLastBits[0].bit;
+}
+
+// computes last bit of num with any bit len for 2 constraints
+// returns bit (0 or 1) and div = num \ 2
+// HAS NO CHECK FOR CHANGING DIV = (p + in) / 2 FLOORED CHANGED!!!! (look explanation for previous template)
+template GetLastBitUnsecure(){
     signal input in;
     signal output bit;
     signal output div;
@@ -140,13 +175,14 @@ template GetLastBit(){
 // in fact, this is also just a div for (2 ** N)
 // for now, this is only one secured div that can be used
 template GetLastNBits(N){
+    assert (N >= 2);
     signal input in;
     signal output div;
     signal output out[N];
     
     component getLastBit[N];
     for (var i = 0; i < N; i++){
-        getLastBit[i] = GetLastBit();
+        getLastBit[i] = GetLastBitUnsecure();
         if (i == 0){
             getLastBit[i].in <== in;
         } else {
@@ -156,6 +192,14 @@ template GetLastNBits(N){
     }
     
     div <== getLastBit[N - 1].div;
+
+    signal check[N];
+    check[0] <== out[0] * out[0];
+    for (var i = 1; i < N; i ++){
+        check[i] <== check[i - 1] + out[i] * (2 ** i);
+    }
+
+    check[N - 1] + div * (2 ** N) === in;
 }
 
 
@@ -182,3 +226,21 @@ template GetSumOfNElements(N){
     }
     out <== sum[N - 2] + dummy * dummy;
 }
+
+// get absolute value of number
+// sign = 1 if +, 0 if -
+template Abs(){
+    signal input in;
+    signal output sign;
+    signal output out;
+
+    component lessThan = GreaterEqThan(253);
+    lessThan.in[0] <== in;
+    lessThan.in[1] <== 10944121435919637611123202872628637544274182200208017171849102093287904247808;
+    component switcher = Switcher();
+    switcher.bool <== lessThan.out;
+    switcher.in[0] <== -in;
+    switcher.in[1] <== in;
+    out <== switcher.out[0];
+
+} 

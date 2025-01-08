@@ -8,12 +8,10 @@ m2.circom
 dev
 dev.*
 tools
-circuits/babyjubjub/*
-circuits/matrix/*
-test/circuits/babyjubjub/*
-test/montogomery.js
 input*.json
 tmp*.circom
 tmp.txt
 bigIntPredefined.circom
 .DS_STORE
+.sym
+.r1cs
