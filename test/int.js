@@ -19,6 +19,7 @@ async function testInverse(input, circuit){
     }
 
 }
+
 async function testDivision(input1, input2, circuit){
     let input = [input1, input2];
 

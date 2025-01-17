@@ -1,11 +1,11 @@
 import math
 import sys
 
-P = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff
-A = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000fffffffc
-B = 0xb3312fa7e23ee7e4988e056be3f82d19181d9c6efe8141120314088f5013875ac656398d8a2ed19d2a85c8edd3ec2aef
-Gx = 0xaa87ca22be8b05378eb1c71ef320ad746e1d3b628ba79b9859f741e082542a385502f25dbf55296c3a545e3872760ab7
-Gy = 0x3617de4a96262c6f5d9e98bf9292dc29f8f41dbd289a147ce9da3113b5f0b8c00a60b1ce1d7e819d7a431d7c90ea0e5f
+P = 0xfffffffffffffffffffffffffffffffeffffffffffffffff
+A = 0xfffffffffffffffffffffffffffffffefffffffffffffffc
+B = 0x64210519e59c80e70fa7e9ab72243049feb8deecc146b9b1
+Gx = 0x188da80eb03090f67cbf20eb43a18800f4ff0afd82ff1012
+Gy = 0x07192b95ffc8da78631011ed6b24cdd573f977a11e794811
 
 def egcd(a, b):
     if a == 0:
@@ -95,7 +95,7 @@ function get_g_pow_stride{stride}_table_{curve}(n, k) '''.format(stride = stride
     assert(n == {} && k == {});
     var powers[{}][{}][2][{}];
 '''.format(n, k, num_strides, 2 ** stride, k)
-    EXP = 512 + stride
+    EXP = 521 + stride
     g_pows = get_g_pows(EXP)
 
     for stride_idx in range(num_strides):
@@ -137,10 +137,8 @@ def get_ecdsa_func_str(n, k, stride_list, curve_name):
 
 def write_to_file(curve_name):
     stride_list = [8]
-    ecdsa_func_str = get_ecdsa_func_str(64, 6, stride_list, curve_name)
-    with open('./circuits/ec/powers/{curve}pows.circom'.format(curve = curve_name), 'w') as file:
+    ecdsa_func_str = get_ecdsa_func_str(64, 4, stride_list)
+    with open('./tmp.circom', 'w') as file:
         file.write(ecdsa_func_str)
 
-#RUN FROM ROOT 
-curve_name = "p384"
-write_to_file(curve_name)
+write_to_file()
