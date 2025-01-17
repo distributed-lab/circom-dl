@@ -9,6 +9,7 @@ include "./sha2/sha224/sha224HashBits.circom";
 include "./sha2/sha256/sha256HashBits.circom";
 include "./sha2/sha384/sha384HashBits.circom";
 include "./sha2/sha512/sha512HashBits.circom";
+include "./sha3/keccak/keccak.circom";
 include "./poseidon/poseidon.circom";
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -25,6 +26,8 @@ include "./poseidon/poseidon.circom";
 // Sha2-256: 256
 // Sha2-384: 384
 // Sha2-512: 512
+// Keccak-256  3256
+
 template ShaHashChunks(BLOCK_NUM, ALGO){
 
     assert(ALGO == 160 || ALGO == 224 || ALGO == 256 || ALGO == 384 || ALGO == 512);
@@ -66,18 +69,19 @@ template ShaHashChunks(BLOCK_NUM, ALGO){
         hash512.dummy <== dummy;
         hash512.out ==> out;
     }
+
 }
 
 template ShaHashBits(LEN, ALGO){
 
-    assert(ALGO == 160 || ALGO == 224 || ALGO == 256 || ALGO == 384 || ALGO == 512);
+    assert(ALGO == 160 || ALGO == 224 || ALGO == 256 || ALGO == 384 || ALGO == 512 || ALGO == 3256 || ALGO == 3384);
     var BLOCK_SIZE = 512;
     if (ALGO > 256){
         BLOCK_SIZE = 1024;
     }
     signal input in[LEN];
     signal input dummy;
-    signal output out[ALGO];
+    signal output out[ALGO % 1000];
 
     if (ALGO == 160) {
         component hash160 = Sha1HashBits(LEN);
@@ -108,6 +112,11 @@ template ShaHashBits(LEN, ALGO){
         hash512.in <== in;
         hash512.dummy <== dummy;
         hash512.out ==> out;
+    }
+    if (ALGO == 3256){
+        component hashKeccak = HashKeccakBits(LEN, ALGO % 1000);
+        hashKeccak.in <== in;
+        hashKeccak.out ==> out;
     }
 }
 
