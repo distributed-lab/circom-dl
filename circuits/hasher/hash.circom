@@ -69,7 +69,6 @@ template ShaHashChunks(BLOCK_NUM, ALGO){
         hash512.dummy <== dummy;
         hash512.out ==> out;
     }
-
 }
 
 template ShaHashBits(LEN, ALGO){

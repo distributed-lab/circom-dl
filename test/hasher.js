@@ -277,6 +277,7 @@ async function testPoseidon(input1, circuit){
     }
 }
 
+<<<<<<< HEAD
 async function testKeccak256(input1, circuit){
 
     const input = hexToBitArray(input1)
@@ -289,6 +290,8 @@ async function testKeccak256(input1, circuit){
 
     assert(circuit_result == real_result, `${real_result} != ${circuit_result}`);
 }
+=======
+>>>>>>> dev
 
 describe("Hash 160 test", function () {
 
@@ -415,6 +418,7 @@ describe("Hash 512 test", function () {
 });
 
 
+<<<<<<< HEAD
 describe("Hash Keccak256 test", function () {
 
     this.timeout(10000000);
@@ -431,6 +435,8 @@ describe("Hash Keccak256 test", function () {
 
 });
 
+=======
+>>>>>>> dev
 describe("Poseidon test", function () {
 
     this.timeout(10000000);
