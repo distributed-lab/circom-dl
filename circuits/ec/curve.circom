@@ -742,8 +742,4 @@ template EllipicCurveScalarGeneratorMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     }
     out <== resultingPoints[parts - 2];
     
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> origin/dev

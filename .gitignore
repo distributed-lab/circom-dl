@@ -13,9 +13,6 @@ tmp*.circom
 tmp.txt
 bigIntPredefined.circom
 .DS_STORE
-<<<<<<< HEAD
 dstu
-=======
 .sym
 .r1cs
->>>>>>> origin/dev

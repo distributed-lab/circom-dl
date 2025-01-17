@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 pragma circom  2.1.6;
-=======
-pragma circom  2.1.9;
->>>>>>> origin/dev
 
 include "../bitify/comparators.circom";
 include "../utils/switcher.circom";

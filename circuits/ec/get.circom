@@ -137,12 +137,9 @@ template EllipticCurveGetDummy(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
             dummyPoint[1] <== [8810416978150023621, 4916408820562498795, 15182365745871871295];
         }
     }
-<<<<<<< HEAD
     
     
     
-=======
->>>>>>> origin/dev
 }
 
 // Get order of eliptic curve

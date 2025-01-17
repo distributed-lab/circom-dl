@@ -243,8 +243,4 @@ template Abs(){
     switcher.in[1] <== in;
     out <== switcher.out[0];
 
-<<<<<<< HEAD
 } 
-=======
-} 
->>>>>>> origin/dev
