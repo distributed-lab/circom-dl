@@ -277,6 +277,18 @@ async function testPoseidon(input1, circuit){
     }
 }
 
+async function testKeccak256(input1, circuit){
+
+    const input = hexToBitArray(input1)
+
+    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+
+    let circuit_result = w.slice(1, 1+256).join("");
+
+    real_result = hexToBitArray("12b9891b9a2cf85ce2c10c5a3bcc53cfd3ca82d8a7b5b0092cd88d7d13c30d17").join("")
+
+    assert(circuit_result == real_result, `${real_result} != ${circuit_result}`);
+}
 
 describe("Hash 160 test", function () {
 
@@ -402,6 +414,22 @@ describe("Hash 512 test", function () {
 
 });
 
+
+describe("Hash Keccak256 test", function () {
+
+    this.timeout(10000000);
+    let circuit1;
+
+    before(async () => {
+        circuit1 = await wasm_tester(path.join(__dirname, "circuits", "hasher", "hashBits3256.circom"));
+    });
+
+    it("Hash bits Keccak256 (0x752c498449eea72b80e3f01ab3735e263d5a23d620ab52ef04464688267dc1b654b48416ad672056378bcfb6373facfd24f2870018db7f76cf0f886488662cf0)", async function () {
+        await testKeccak256("752c498449eea72b80e3f01ab3735e263d5a23d620ab52ef04464688267dc1b654b48416ad672056378bcfb6373facfd24f2870018db7f76cf0f886488662cf0", circuit1);
+    });
+
+
+});
 
 describe("Poseidon test", function () {
 

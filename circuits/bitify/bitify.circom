@@ -1,5 +1,7 @@
 pragma circom 2.1.6;
 
+include "./comparators.circom";
+include "./aliascheck.circom";
 // Here is operation to convert number to bit array and bit array to number
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -8,6 +10,7 @@ pragma circom 2.1.6;
 template Num2Bits(LEN){
     assert(LEN <= 254);
     assert(LEN > 0);
+
     signal input in;
     signal output out[LEN];
     for (var i = 0; i < LEN; i++) {
@@ -21,6 +24,11 @@ template Num2Bits(LEN){
     }
     
     in === sum[LEN - 1];
+
+    if (LEN == 254){
+        component aliascheck = AliasCheck();
+        aliascheck.in <== out;
+    }
 }
 
 
@@ -28,11 +36,11 @@ template Num2Bits(LEN){
 // Here bit check is not present, use only with bits else error will appear!!!
 // No bit check so only 1 constarint
 template Bits2Num(LEN){
-    assert(LEN <= 253);
+    assert(LEN <= 254);
     assert(LEN > 0);
+
     signal input in[LEN];
     signal output out;
-    
     signal sum[LEN];
     sum[0] <== in[0] * in[0];
     
@@ -40,4 +48,9 @@ template Bits2Num(LEN){
         sum[i] <== 2 ** i * in[i] + sum[i - 1];
     }
     out <== sum[LEN - 1];
+    if (LEN == 254){
+        component aliascheck = AliasCheck();
+        aliascheck.in <== in;
+    } 
+
 }

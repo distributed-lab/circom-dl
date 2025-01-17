@@ -13,5 +13,6 @@ tmp*.circom
 tmp.txt
 bigIntPredefined.circom
 .DS_STORE
+dstu
 .sym
 .r1cs

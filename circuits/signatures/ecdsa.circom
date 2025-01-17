@@ -126,7 +126,6 @@ template verifyECDSABigInt(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mult2.in1 <== sinv;
     mult2.in2 <== signature[0];
     mult2.modulus <== order;
-
     mult2.dummy <== dummy;
     
     // h * s_inv * G
