@@ -350,4 +350,8 @@ template BigModInv(CHUNK_SIZE, CHUNK_NUMBER) {
     for (var i = 1; i < CHUNK_NUMBER; i++) {
         mult.mod[i] === 0;
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/dev

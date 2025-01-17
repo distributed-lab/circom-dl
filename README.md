@@ -15,7 +15,10 @@ Currently, it supports:
     - secp256r1
     - secp256k1
     - secp384r1
+<<<<<<< HEAD
     - secp521r1
+=======
+>>>>>>> origin/dev
     - *to be continued*
 
 
@@ -25,8 +28,12 @@ Currently, it supports:
     - SHA256
     - SHA384
     - SHA512
+<<<<<<< HEAD
     - Keccak256
     - Poseidon
+=======
+    - Poseidon (fixed missing constraints)
+>>>>>>> origin/dev
     - *to be continued*
 
 - *signatures*. Implemets different signature schemes. Currently supports:
@@ -39,3 +46,14 @@ Currently, it supports:
     - *to be continued*
 
 
+## SETUP
+
+```
+npm install
+```
+
+## TESTS
+
+```
+npm test
+```

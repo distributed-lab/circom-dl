@@ -137,8 +137,18 @@ def get_ecdsa_func_str(n, k, stride_list, curve_name):
 
 def write_to_file(curve_name):
     stride_list = [8]
+<<<<<<< HEAD
     ecdsa_func_str = get_ecdsa_func_str(64, 4, stride_list)
     with open('./tmp.circom', 'w') as file:
         file.write(ecdsa_func_str)
 
 write_to_file()
+=======
+    ecdsa_func_str = get_ecdsa_func_str(64, 8, stride_list, curve_name)
+    with open('./circuits/ec/powers/{curve}pows.circom'.format(curve = curve_name), 'w') as file:
+        file.write(ecdsa_func_str)
+
+#RUN FROM ROOT 
+curve_name = "secp192r1"
+write_to_file(curve_name)
+>>>>>>> origin/dev
