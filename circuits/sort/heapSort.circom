@@ -1,6 +1,7 @@
 pragma circom  2.1.6;
 
 include "../bitify/comparators.circom";
+include "../bitify/bitify.circom";
 include "../utils/switcher.circom";
 
 // This is circom heap sort realisation.
@@ -138,6 +139,12 @@ template HeapSort(LEN, BITS){
     
     signal input in[LEN];
     signal output out[LEN];
+
+    component bitLengthCheck[LEN];
+    for(var i = 0; i < LEN; i++){
+        bitLengthCheck[i] = Num2Bits(BITS);
+        bitLengthCheck[i].in <== in[i];
+    }
     
     var LEVELS = 1;
     while (2 ** LEVELS <= LEN){
