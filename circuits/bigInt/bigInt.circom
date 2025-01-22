@@ -351,3 +351,26 @@ template BigModInv(CHUNK_SIZE, CHUNK_NUMBER) {
         mult.mod[i] === 0;
     }
 }
+
+
+// Only for equal non-overflowed in[0] and in[1], where in[0] >= in[1]
+template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
+    signal input in[2][CHUNK_NUMBER];
+    signal output out[CHUNK_NUMBER];
+    signal input dummy;
+
+    
+    component lessThan[CHUNK_NUMBER];
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        lessThan[i] = LessThan(CHUNK_SIZE + 1);
+        lessThan[i].in[1] <== 2 ** CHUNK_SIZE;
+        
+        if (i == 0){
+            lessThan[i].in[0] <== in[0][i] - in[1][i] + 2 ** CHUNK_SIZE + dummy * dummy;
+            out[i] <== in[0][i] - in[1][i] + (2 ** CHUNK_SIZE) * (lessThan[i].out) + dummy * dummy;
+        } else {
+            lessThan[i].in[0] <== in[0][i] - in[1][i] - lessThan[i - 1].out + 2 ** CHUNK_SIZE + dummy * dummy;
+            out[i] <== in[0][i] - in[1][i] + (2 ** CHUNK_SIZE) * (lessThan[i].out) - lessThan[i - 1].out + dummy * dummy;
+        }
+    }
+}
