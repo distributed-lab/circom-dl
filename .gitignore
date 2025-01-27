@@ -16,3 +16,4 @@ bigIntPredefined.circom
 dstu
 .sym
 .r1cs
+ecrocover.py
