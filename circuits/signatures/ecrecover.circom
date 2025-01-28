@@ -133,11 +133,4 @@ template EcRecover(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     scalarMult2.in <== pointAdd.out;
 
     out <== scalarMult2.out;    
-
-    for (var i = 0; i < 4; i++){
-        log(out[0][i]);
-    }
-    for (var i = 0; i < 4; i++){
-        log(out[1][i]);
-    }
 }
