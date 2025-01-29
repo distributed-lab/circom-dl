@@ -53,6 +53,7 @@ template EcRecover(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     getYSquare.modulus <== P;
     
     // TODO: CHANGE FOR OTHER CHUNKING!!!!!
+    // This is p + 1 // 4 in 64, 4 chunking (I hope so)
     var exp[4] = [18446744072635809548, 18446744073709551615, 18446744073709551615, 4611686018427387903];
     var var_y[200] = mod_exp(CHUNK_SIZE, CHUNK_NUMBER, getYSquare.mod, P, exp);
     
