@@ -20,15 +20,14 @@ template MatrixMultiply(n1, m1, n2, m2){
     assert(m1 == n2);
     signal input in1[n1][m1];
     signal input in2[n2][m2];
-    signal input dummy;
-    dummy * dummy === 0;
+    
+    
     signal output out[n1][m2];
     
     component getSum[n1][m2];
     for (var i = 0; i < n1; i++){
         for (var j = 0; j < m2; j++){
             getSum[i][j] = GetSumOfNElements(m1);
-            getSum[i][j].dummy <== dummy;
             for (var k = 0; k < m1; k++){
                 getSum[i][j].in[k] <== in1[i][k] * in2[k][j];
             }
@@ -46,8 +45,8 @@ template MatrixMultiply(n1, m1, n2, m2){
 template MatrixScalarMult(n, m){
     signal input in[n][m];
     signal input scalar;
-    signal input dummy;
-    dummy * dummy === 0;
+    
+    
     
     signal output out[n][m];
     
@@ -81,12 +80,12 @@ template MatrixHadamardProduct(n, m){
 template MatrixAddition(n, m){
     signal input in1[n][m];
     signal input in2[n][m];
-    signal input dummy;
+    
     signal output out[n][m];
     
     for (var i = 0; i < n; i++){
         for (var j = 0; j < m; j++){
-            out[i][j] <== in1[i][j] + in2[i][j] + dummy * dummy;
+            out[i][j] <== in1[i][j] + in2[i][j];
         }
     }
     
@@ -118,21 +117,19 @@ template MatrixDeterminant(n){
     assert(n >= 2);
     
     signal input in[n][n];
-    signal input dummy;
-    dummy * dummy === 0;
+    
+    
     signal output out;
     
     if (n == 2){
         signal ad <== in[0][0] * in[1][1];
         signal db <== in[0][1] * in[1][0];
-        out <== ad - db + dummy * dummy;
+        out <== ad - db;
     } else {
         component sum = GetSumOfNElements(n);
-        sum.dummy <== dummy;
         component matrixDeterminant[n];
         for (var i = 0; i < n; i++){
             matrixDeterminant[i] = MatrixDeterminant(n - 1);
-            matrixDeterminant[i].dummy <== dummy;
             for (var n_idx = 1; n_idx < n; n_idx++){
                 for (var m_idx = 0; m_idx < n; m_idx++){
                     if (m_idx != i){
@@ -165,7 +162,7 @@ template MatrixPower(n, EXP){
     
     signal input in[n][n];
     signal output out[n][n];
-    signal input dummy;
+    
     
     var exp_process[256] = exp_to_bits(EXP);
     
@@ -174,12 +171,10 @@ template MatrixPower(n, EXP){
     
     for (var i = 0; i < exp_process[0]; i++){
         muls[i] = MatrixMultiply(n, n, n, n);
-        muls[i].dummy <== dummy;
     }
     
     for (var i = 0; i < exp_process[1] - 1; i++){
         resultMuls[i] = MatrixMultiply(n, n, n, n);
-        resultMuls[i].dummy <== dummy;
     }
     
     muls[0].in1 <== in;

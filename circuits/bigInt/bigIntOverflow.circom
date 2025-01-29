@@ -24,13 +24,13 @@ template BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     signal input in1[CHUNK_NUMBER_GREATER];
     signal input in2[CHUNK_NUMBER_LESS];
     signal output out[CHUNK_NUMBER_GREATER];
-    signal input dummy;
+    
     
     for (var i = 0; i < CHUNK_NUMBER_LESS; i++){
-        out[i] <== in1[i] + in2[i] + dummy * dummy;
+        out[i] <== in1[i] + in2[i];
     }
     for (var i = CHUNK_NUMBER_LESS; i < CHUNK_NUMBER_GREATER; i++){
-        out[i] <== in1[i] + dummy * dummy;
+        out[i] <== in1[i];
     }
 }
 
@@ -38,7 +38,7 @@ template BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     signal input in1[CHUNK_NUMBER_GREATER];
     signal input in2[CHUNK_NUMBER_LESS];
     signal output out[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
-    signal input dummy;
+    
 
     var isPowerOfTwo = 0;
     for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
@@ -59,7 +59,6 @@ template BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
         for (var i = CHUNK_NUMBER_LESS; i < CHUNK_NUMBER_GREATER; i++){
             karatsuba.in[1][i] <== 0;
         }
-        karatsuba.dummy <== dummy;
         for (var i = 0; i < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1; i++){
             karatsuba.out[i] ==> out[i];
         }
@@ -67,7 +66,6 @@ template BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
        component mult =  BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
        mult.in1 <== in1;
        mult.in2 <== in2;
-       mult.dummy <== dummy;
        mult.out ==> out;
     }
 }
@@ -79,20 +77,20 @@ template BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in1[CHUNK_NUMBER];
     signal input in2[CHUNK_NUMBER];
     signal input modulus[CHUNK_NUMBER];
-    signal input dummy;
+    
 
-    dummy * dummy === 0;
+    
 
     signal output out[CHUNK_NUMBER];
 
     for (var i = 0; i < CHUNK_NUMBER; i++){
         if (i == 0){
-            out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] + dummy * dummy;
+            out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i];
         } else {
             if (i == CHUNK_NUMBER - 1){
-                out[i] <== modulus[i] + in1[i] - in2[i] - 1 + dummy * dummy;
+                out[i] <== modulus[i] + in1[i] - in2[i] - 1;
             } else {
-                out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] - 1 + dummy * dummy;
+                out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] - 1;
             }
         }
     }
@@ -116,20 +114,20 @@ template BigSubModP(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in1[CHUNK_NUMBER];
     signal input in2[CHUNK_NUMBER];
     signal input modulus[CHUNK_NUMBER];
-    signal input dummy;
+    
 
-    dummy * dummy === 0;
+    
 
     signal output out[CHUNK_NUMBER];
 
     for (var i = 0; i < CHUNK_NUMBER; i++){
         if (i == 0){
-            out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] + dummy * dummy;
+            out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i];
         } else {
             if (i == CHUNK_NUMBER - 1){
-                out[i] <== modulus[i] + in1[i] - in2[i] - 1 + dummy * dummy;
+                out[i] <== modulus[i] + in1[i] - in2[i] - 1;
             } else {
-                out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] - 1 + dummy * dummy;
+                out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] - 1;
             }
         }
     }

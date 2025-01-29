@@ -10,8 +10,8 @@ template Mgf1Sha384(SEED_LEN, MASK_LEN) { //in bytes
 
     signal input seed[SEED_LEN_BITS]; //each represents a bit
     signal output out[MASK_LEN_BITS];
-    signal input dummy;
-    dummy * dummy === 0;
+    
+    
     
     assert(MASK_LEN <= 0xffffffff * HASH_LEN );
 
@@ -21,7 +21,6 @@ template Mgf1Sha384(SEED_LEN, MASK_LEN) { //in bytes
 
     for (var i = 0; i < ITERATIONS; i++) {
         sha384[i] = ShaHashChunks(1, 384); //32 bits for counter
-        sha384[i].dummy <== dummy;
         num2Bits[i] = Num2Bits(32);
     }
 
@@ -76,8 +75,8 @@ template Mgf1Sha256(SEED_LEN, MASK_LEN) { //in bytes
 
     signal input seed[SEED_LEN_BITS]; //each represents a bit
     signal output out[MASK_LEN_BITS];
-    signal input dummy;
-    dummy * dummy === 0;
+    
+    
     
     assert(MASK_LEN <= 0xffffffff * HASH_LEN );
     var ITERATIONS = (MASK_LEN \ HASH_LEN) + 1; //adding 1, in-case MASK_LEN \ HASH_LEN is 0
@@ -87,7 +86,6 @@ template Mgf1Sha256(SEED_LEN, MASK_LEN) { //in bytes
 
     for (var i = 0; i < ITERATIONS; i++) {
         sha256[i] = ShaHashChunks(1, 256); //32 bits for counter
-        sha256[i].dummy <== dummy;
         num2Bits[i] = Num2Bits(32);
     }
 
@@ -142,7 +140,7 @@ template Mgf1Sha512(SEED_LEN, MASK_LEN) { //in bytes
 
     signal input seed[SEED_LEN_BITS]; //each represents a bit
     signal output out[MASK_LEN_BITS];
-    signal input dummy;
+    
 
     assert(MASK_LEN <= 0xffffffff * HASH_LEN );
     var ITERATIONS = (MASK_LEN \ HASH_LEN) + 1; //adding 1, in-case MASK_LEN \ HASH_LEN is 0
@@ -151,7 +149,6 @@ template Mgf1Sha512(SEED_LEN, MASK_LEN) { //in bytes
 
     for (var i = 0; i < ITERATIONS; i++) {
         sha512[i] = ShaHashChunks(1, 512); //32 bits for counter
-        sha512[i].dummy <== dummy;
         num2Bits[i] = Num2Bits(32);
     }
 

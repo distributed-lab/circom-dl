@@ -61,27 +61,22 @@ include "../int/arithmetic.circom";
 // (x^3 + a * x + b - y * 2 % p) === 0
 template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in[2][CHUNK_NUMBER];
-    signal input dummy;
-    
+        
     component squareX = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     squareX.in1 <== in[0];
     squareX.in2 <== in[0];
-    squareX.dummy <== dummy;
     
     component cubeX = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
     cubeX.in1 <== squareX.out;
     cubeX.in2 <== in[0];
-    cubeX.dummy <== dummy;
     
     component squareY = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     squareY.in1 <== in[1];
     squareY.in2 <== in[1];
-    squareY.dummy <== dummy;
     
     component coefMult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     coefMult.in1 <== in[0];
     coefMult.in2 <== A;
-    coefMult.dummy <== dummy;
     
     component isZeroModP = BigIntIsZeroModP(CHUNK_SIZE, CHUNK_SIZE * 3 + 2 * CHUNK_NUMBER, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER * 3, CHUNK_NUMBER);
     for (var i = 0; i < CHUNK_NUMBER; i++){
@@ -94,7 +89,6 @@ template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
         isZeroModP.in[i] <== cubeX.out[i];
     }
     isZeroModP.modulus <== P;
-    isZeroModP.dummy <== dummy;
 }
 
 // Check is point on tangent (for doubling check)
@@ -105,12 +99,10 @@ template PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 template PointOnTangent(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in1[2][CHUNK_NUMBER];
     signal input in2[2][CHUNK_NUMBER];
-    signal input dummy;
-    
+        
     component squareX = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     squareX.in1 <== in1[0];
     squareX.in2 <== in1[0];
-    squareX.dummy <== dummy;
     
     component scalarMult = ScalarMultOverflow(CHUNK_NUMBER * 2 - 1);
     scalarMult.in <== squareX.out;
@@ -119,18 +111,15 @@ template PointOnTangent(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     component bigAdd = BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
     bigAdd.in1 <== scalarMult.out;
     bigAdd.in2 <== A;
-    bigAdd.dummy <== dummy;
     
     component bigSub = BigSubModP(CHUNK_SIZE, CHUNK_NUMBER);
     bigSub.in1 <== in1[0];
     bigSub.in2 <== in2[0];
     bigSub.modulus <== P;
-    bigSub.dummy <== dummy;
     
     component rightMult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER);
     rightMult.in1 <== bigAdd.out;
     rightMult.in2 <== bigSub.out;
-    rightMult.dummy <== dummy;
     
     component scalarMult2 = ScalarMultOverflow(CHUNK_NUMBER);
     scalarMult2.in <== in1[1];
@@ -139,12 +128,10 @@ template PointOnTangent(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     component bigAdd2 = BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     bigAdd2.in1 <== in1[1];
     bigAdd2.in2 <== in2[1];
-    bigAdd2.dummy <== dummy;
     
     component leftMult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     leftMult.in1 <== bigAdd2.out;
     leftMult.in2 <== scalarMult2.out;
-    leftMult.dummy <== dummy;
     
     component isZeroModP = BigIntIsZeroModP(CHUNK_SIZE, CHUNK_SIZE * 3 + 2 * CHUNK_NUMBER, CHUNK_NUMBER * 3 - 2, CHUNK_NUMBER * 3 + 1, CHUNK_NUMBER);
     for (var i = 0; i < CHUNK_NUMBER * 2 - 1; i++){
@@ -155,7 +142,6 @@ template PointOnTangent(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     }
     
     isZeroModP.modulus <== P;
-    isZeroModP.dummy <== dummy;
     
 }
 
@@ -168,41 +154,34 @@ template PointOnLine(CHUNK_SIZE, CHUNK_NUMBER, A, B, P) {
     signal input in1[2][CHUNK_NUMBER];
     signal input in2[2][CHUNK_NUMBER];
     signal input in3[2][CHUNK_NUMBER];
-    signal input dummy;
-    
+        
     
     component bigAdd = BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     bigAdd.in1 <== in1[1];
     bigAdd.in2 <== in3[1];
-    bigAdd.dummy <== dummy;
     
     component bigSub = BigSubModP(CHUNK_SIZE, CHUNK_NUMBER);
     bigSub.in1 <== in2[0];
     bigSub.in2 <== in1[0];
     bigSub.modulus <== P;
-    bigSub.dummy <== dummy;
     
     component bigSub2 = BigSubModP(CHUNK_SIZE, CHUNK_NUMBER);
     bigSub2.in1 <== in2[1];
     bigSub2.in2 <== in1[1];
     bigSub2.modulus <== P;
-    bigSub2.dummy <== dummy;
     
     component bigSub3 = BigSubModP(CHUNK_SIZE, CHUNK_NUMBER);
     bigSub3.in1 <== in1[0];
     bigSub3.in2 <== in3[0];
     bigSub3.modulus <== P;
-    bigSub3.dummy <== dummy;
     
     component leftMult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     leftMult.in1 <== bigAdd.out;
     leftMult.in2 <== bigSub.out;
-    leftMult.dummy <== dummy;
     
     component rightMult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     rightMult.in1 <== bigSub2.out;
     rightMult.in2 <== bigSub3.out;
-    rightMult.dummy <== dummy;
     
     
     component isZeroModP = BigIntIsZeroModP(CHUNK_SIZE, CHUNK_SIZE * 2 + 2 * CHUNK_NUMBER, CHUNK_NUMBER * 2 - 1, CHUNK_NUMBER * 2 + 1, CHUNK_NUMBER);
@@ -211,19 +190,16 @@ template PointOnLine(CHUNK_SIZE, CHUNK_NUMBER, A, B, P) {
     }
     
     isZeroModP.modulus <== P;
-    isZeroModP.dummy <== dummy;
 }
 
 // Precomputes for pipinger optimised multiplication
 // Computes 0 * G, 1 * G, 2 * G, ... (2 ** WINDOW_SIZE - 1) * G
 template EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE){
     signal input in[2][CHUNK_NUMBER];
-    signal input dummy;
-    
+        
     var PRECOMPUTE_NUMBER = 2 ** WINDOW_SIZE;
     
     signal output out[PRECOMPUTE_NUMBER][2][CHUNK_NUMBER];
-    dummy * dummy === 0;
     
     component getDummy = EllipticCurveGetDummy(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     out[0] <== getDummy.dummyPoint;
@@ -237,7 +213,6 @@ template EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WIND
         if (i % 2 == 0){
             doublers[i \ 2 - 1] = EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
             doublers[i \ 2 - 1].in <== out[i \ 2];
-            doublers[i \ 2 - 1].dummy <== dummy;
             doublers[i \ 2 - 1].out ==> out[i];
             
         }
@@ -245,7 +220,6 @@ template EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WIND
             adders[i \ 2 - 1] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
             adders[i \ 2 - 1].in1 <== out[1];
             adders[i \ 2 - 1].in2 <== out[i - 1];
-            adders[i \ 2 - 1].dummy <== dummy;
             adders[i \ 2 - 1].out ==> out[i];
         }
     }
@@ -260,8 +234,7 @@ template EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WIND
 // We check is point is lies both on tangent and curve to assume that point is result of doubling
 template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in[2][CHUNK_NUMBER];
-    signal input dummy;
-    signal output out[2][CHUNK_NUMBER];
+        signal output out[2][CHUNK_NUMBER];
 
     var long_3[CHUNK_NUMBER];
     long_3[0] = 3;
@@ -280,11 +253,9 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     component onTangentCheck = PointOnTangent(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     onTangentCheck.in1 <== in;
     onTangentCheck.in2 <== out;
-    onTangentCheck.dummy <== dummy;
     
     component onCurveCheck = PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     onCurveCheck.in <== out;
-    onCurveCheck.dummy <== dummy;
     
     // In circom pairing lib, there were 2 other checks. 
     // First is for each chunk is in range [0, 2**CHUNK_NUMBER).
@@ -299,8 +270,7 @@ template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in1[2][CHUNK_NUMBER];
     signal input in2[2][CHUNK_NUMBER];
-    signal input dummy;
-    
+        
     signal output out[2][CHUNK_NUMBER];
     
     var dy[200] = long_sub_mod(CHUNK_SIZE, CHUNK_NUMBER, in2[1], in1[1], P);
@@ -319,13 +289,11 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     component onCurveCheck = PointOnCurve(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     onCurveCheck.in <== out;
-    onCurveCheck.dummy <== dummy;
     
     component onLineCheck = PointOnLine(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     onLineCheck.in1 <== in1;
     onLineCheck.in2 <== in2;
     onLineCheck.in3 <== out;
-    onLineCheck.dummy <== dummy;
     
     
     
@@ -345,12 +313,10 @@ template EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE)
     
     signal input in[2][CHUNK_NUMBER];
     signal input scalar[CHUNK_NUMBER];
-    signal input dummy;
-    
+        
     signal output out[2][CHUNK_NUMBER];
     
     component precompute = EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE);
-    precompute.dummy <== dummy;
     precompute.in <== in;
     
     
@@ -407,7 +373,6 @@ template EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE)
         if (i != 0){
             for (var j = 0; j < WINDOW_SIZE; j++){
                 doublers[i + j - WINDOW_SIZE] = EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
-                doublers[i + j - WINDOW_SIZE].dummy <== dummy;
                 
                 // if input == 0, double gen, result - zero
                 // if input != 0, double res window times, result - doubling result
@@ -434,7 +399,6 @@ template EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE)
         for (var axis_idx = 0; axis_idx < 2; axis_idx++){
             for (var coor_idx = 0; coor_idx < CHUNK_NUMBER; coor_idx++){
                 getSum[i \ WINDOW_SIZE][axis_idx][coor_idx] = GetSumOfNElements(PRECOMPUTE_NUMBER);
-                getSum[i \ WINDOW_SIZE][axis_idx][coor_idx].dummy <== dummy;
             }
         }
         
@@ -468,7 +432,6 @@ template EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE)
             
             adders[i \ WINDOW_SIZE - 1].in1 <== doublers[i - 1].out;
             adders[i \ WINDOW_SIZE - 1].in2 <== additionPoints[i \ WINDOW_SIZE];
-            adders[i \ WINDOW_SIZE - 1].dummy <== dummy;
             
             isZeroAddition[i \ WINDOW_SIZE] = IsEqual();
             isZeroAddition[i \ WINDOW_SIZE].in[0] <== additionPoints[i \ WINDOW_SIZE][0][0];
@@ -513,8 +476,7 @@ template EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE)
 template EllipicCurveScalarGeneratorMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     signal input scalar[CHUNK_NUMBER];
-    signal input dummy;
-    
+        
     signal output out[2][CHUNK_NUMBER];
     
     var STRIDE = 8;
@@ -585,7 +547,6 @@ template EllipicCurveScalarGeneratorMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 
     component getDummy = EllipticCurveGetDummy(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     component getSecondDummy = EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
-    getSecondDummy.dummy <== dummy;
     getSecondDummy.in <== getDummy.dummyPoint;
 
     component equal[parts][2 ** STRIDE];
@@ -628,7 +589,6 @@ template EllipicCurveScalarGeneratorMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
         for (var j = 0; j < 2; j++){
             for (var axis_idx = 0; axis_idx < CHUNK_NUMBER; axis_idx++){
                 getSumOfNElements[i][j][axis_idx] = GetSumOfNElements(2 ** STRIDE);
-                getSumOfNElements[i][j][axis_idx].dummy <== dummy;
                 for (var stride_idx = 0; stride_idx < 2 ** STRIDE; stride_idx++){
                     getSumOfNElements[i][j][axis_idx].in[stride_idx] <== resultCoordinateComputation[i][stride_idx][j][axis_idx];
                 }
@@ -666,7 +626,6 @@ template EllipicCurveScalarGeneratorMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     for (var i = 0; i < parts - 1; i++){
         adders[i] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
-        adders[i].dummy <== dummy;
 
         isFirstDummyLeft[i] = IsEqual();
         isFirstDummyLeft[i].in[0] <== getDummy.dummyPoint[0][0];

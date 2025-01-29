@@ -42,7 +42,7 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     
     signal input in1[CHUNK_NUMBER_GREATER];
     signal input in2[CHUNK_NUMBER_LESS];
-    signal input dummy;
+    
     
     signal output out[CHUNK_NUMBER_GREATER + 1];
     
@@ -51,7 +51,6 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     component bigAddOverflow = BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
     bigAddOverflow.in1 <== in1;
     bigAddOverflow.in2 <== in2;
-    bigAddOverflow.dummy <== dummy;
     
     for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
         num2bits[i] = Num2Bits(CHUNK_SIZE + 1);
@@ -60,16 +59,16 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
         if (i == 0){
             num2bits[i].in <== bigAddOverflow.out[i];
         } else {
-            num2bits[i].in <== bigAddOverflow.out[i] + num2bits[i - 1].out[CHUNK_SIZE] + dummy * dummy;
+            num2bits[i].in <== bigAddOverflow.out[i] + num2bits[i - 1].out[CHUNK_SIZE];
         }
     }
     
     for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
         if (i == 0) {
-            out[i] <== bigAddOverflow.out[i] - (num2bits[i].out[CHUNK_SIZE]) * (2 ** CHUNK_SIZE) + dummy * dummy;
+            out[i] <== bigAddOverflow.out[i] - (num2bits[i].out[CHUNK_SIZE]) * (2 ** CHUNK_SIZE);
         }
         else {
-            out[i] <== bigAddOverflow.out[i] - (num2bits[i].out[CHUNK_SIZE]) * (2 ** CHUNK_SIZE) + num2bits[i - 1].out[CHUNK_SIZE] + dummy * dummy;
+            out[i] <== bigAddOverflow.out[i] - (num2bits[i].out[CHUNK_SIZE]) * (2 ** CHUNK_SIZE) + num2bits[i - 1].out[CHUNK_SIZE];
         }
     }
     out[CHUNK_NUMBER_GREATER] <== num2bits[CHUNK_NUMBER_GREATER - 1].out[CHUNK_SIZE];
@@ -80,13 +79,12 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
 template BigMult(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     signal input in1[CHUNK_NUMBER_GREATER];
     signal input in2[CHUNK_NUMBER_LESS];
-    signal input dummy;
+    
     signal output out[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS];
     
     component bigMultOverflow = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
     bigMultOverflow.in1 <== in1;
     bigMultOverflow.in2 <== in2;
-    bigMultOverflow.dummy <== dummy;
     
     component num2bits[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
     component bits2numOverflow[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
@@ -109,7 +107,7 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
         if (i == 0){
             num2bits[i].in <== bigMultOverflow.out[i];
         } else {
-            num2bits[i].in <== bigMultOverflow.out[i] + bits2numOverflow[i - 1].out + dummy * dummy;
+            num2bits[i].in <== bigMultOverflow.out[i] + bits2numOverflow[i - 1].out;
         }
         
         bits2numOverflow[i] = Bits2Num(CHUNK_SIZE + ADDITIONAL_LEN);
@@ -141,7 +139,7 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     
     signal input base[CHUNK_NUMBER_BASE];
     signal input modulus[CHUNK_NUMBER_MODULUS];
-    signal input dummy;
+    
     
     signal output div[CHUNK_NUMBER_DIV];
     signal output mod[CHUNK_NUMBER_MODULUS];
@@ -172,14 +170,10 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     
     if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
         mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
-        mult.dummy <== dummy;
-        
         mult.in1 <== div;
         mult.in2 <== modulus;
     } else {
         mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
-        mult.dummy <== dummy;
-        
         mult.in2 <== div;
         mult.in1 <== modulus;
     }
@@ -202,7 +196,7 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
     signal input in1[CHUNK_NUMBER_GREATER];
     signal input in2[CHUNK_NUMBER_LESS];
     signal input modulus[CHUNK_NUMBER_MODULUS];
-    signal input dummy;
+    
 
     var CHUNK_NUMBER_BASE = CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS;
     var CHUNK_NUMBER_DIV = CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS + 1;
@@ -213,7 +207,6 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
     component mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
     mult.in1 <== in1;
     mult.in2 <== in2;
-    mult.dummy <== dummy;
 
     var reduced[200] = reduce_overflow(CHUNK_SIZE, CHUNK_NUMBER_BASE - 1, CHUNK_NUMBER_BASE, mult.out);
     var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV - 1, reduced, modulus);
@@ -243,13 +236,11 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
         
         mult2.in1 <== div;
         mult2.in2 <== modulus;
-        mult2.dummy <== dummy;
     } else {
         mult2 = BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
         
         mult2.in2 <== div;
         mult2.in1 <== modulus;
-        mult2.dummy <== dummy;
     }
     
     component isZero = BigIntIsZero(CHUNK_SIZE, CHUNK_SIZE * 2 + log_ceil(CHUNK_NUMBER_MODULUS + CHUNK_NUMBER_DIV - 1), CHUNK_NUMBER_BASE - 1);
@@ -273,7 +264,7 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
     
     signal input base[CHUNK_NUMBER];
     signal input modulus[CHUNK_NUMBER];
-    signal input dummy;
+    
     
     signal output out[CHUNK_NUMBER];
     
@@ -284,13 +275,11 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
     
     for (var i = 0; i < exp_process[0]; i++){
         muls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
-        muls[i].dummy <== dummy;
         muls[i].modulus <== modulus;
     }
     
     for (var i = 0; i < exp_process[1] - 1; i++){
         resultMuls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
-        resultMuls[i].dummy <== dummy;
         resultMuls[i].modulus <== modulus;
     }
 
@@ -332,8 +321,8 @@ template BigModInv(CHUNK_SIZE, CHUNK_NUMBER) {
     signal input modulus[CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
     
-    signal input dummy;
-    dummy * dummy === 0;
+    
+    
     
     var inv[200] = mod_inv(CHUNK_SIZE, CHUNK_NUMBER, in, modulus);
     for (var i = 0; i < CHUNK_NUMBER; i++) {
@@ -344,7 +333,6 @@ template BigModInv(CHUNK_SIZE, CHUNK_NUMBER) {
     mult.in1 <== in;
     mult.in2 <== out;
     mult.modulus <== modulus;
-    mult.dummy <== dummy;
     
     mult.mod[0] === 1;
     for (var i = 1; i < CHUNK_NUMBER; i++) {
@@ -357,7 +345,7 @@ template BigModInv(CHUNK_SIZE, CHUNK_NUMBER) {
 template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[2][CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
-    signal input dummy;
+    
 
     
     component lessThan[CHUNK_NUMBER];
@@ -366,11 +354,11 @@ template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
         lessThan[i].in[1] <== 2 ** CHUNK_SIZE;
         
         if (i == 0){
-            lessThan[i].in[0] <== in[0][i] - in[1][i] + 2 ** CHUNK_SIZE + dummy * dummy;
-            out[i] <== in[0][i] - in[1][i] + (2 ** CHUNK_SIZE) * (lessThan[i].out) + dummy * dummy;
+            lessThan[i].in[0] <== in[0][i] - in[1][i] + 2 ** CHUNK_SIZE;
+            out[i] <== in[0][i] - in[1][i] + (2 ** CHUNK_SIZE) * (lessThan[i].out);
         } else {
-            lessThan[i].in[0] <== in[0][i] - in[1][i] - lessThan[i - 1].out + 2 ** CHUNK_SIZE + dummy * dummy;
-            out[i] <== in[0][i] - in[1][i] + (2 ** CHUNK_SIZE) * (lessThan[i].out) - lessThan[i - 1].out + dummy * dummy;
+            lessThan[i].in[0] <== in[0][i] - in[1][i] - lessThan[i - 1].out + 2 ** CHUNK_SIZE;
+            out[i] <== in[0][i] - in[1][i] + (2 ** CHUNK_SIZE) * (lessThan[i].out) - lessThan[i - 1].out;
         }
     }
 }

@@ -11,7 +11,7 @@ template EcRecover(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input r[CHUNK_NUMBER];
     signal input s[CHUNK_NUMBER];
     signal input hashed[CHUNK_NUMBER];
-    signal input dummy;
+    
     
     signal output out[2][CHUNK_NUMBER];
     
@@ -30,26 +30,22 @@ template EcRecover(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     squareX.in1 <== r;
     squareX.in2 <== r;
     squareX.modulus <== P;
-    squareX.dummy <== dummy;
     
     component cubeX = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
     
     cubeX.in1 <== squareX.mod;
     cubeX.in2 <== r;
     cubeX.modulus <== P;
-    cubeX.dummy <== dummy;
     
     component coefMult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER);
     coefMult.in1 <== r;
     coefMult.in2 <== A;
-    coefMult.dummy <== dummy;
     
     component getYSquare = BigMod(CHUNK_SIZE, CHUNK_NUMBER + 1, CHUNK_NUMBER);
     for (var i = 0; i < CHUNK_NUMBER; i++){
         getYSquare.base[i] <== cubeX.mod[i] + coefMult.out[i] + B[i];
     }
     getYSquare.base[CHUNK_NUMBER] <== 0;
-    getYSquare.dummy <== dummy;
     getYSquare.modulus <== P;
     
     // TODO: CHANGE FOR OTHER CHUNKING!!!!!
@@ -66,7 +62,6 @@ template EcRecover(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     component yVerify = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
     yVerify.in1 <== y;
     yVerify.in2 <== y;
-    yVerify.dummy <== dummy;
     yVerify.modulus <== P;
     
     for (var i = 0; i < CHUNK_NUMBER; i++){
@@ -83,7 +78,6 @@ template EcRecover(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     component negateY = BigSub(CHUNK_SIZE, CHUNK_NUMBER);
     negateY.in[0] <== P;
     negateY.in[1] <== y;
-    negateY.dummy <== dummy;
 
     component switcher[CHUNK_NUMBER];
     for (var i = 0; i < CHUNK_NUMBER; i++){
@@ -98,20 +92,16 @@ template EcRecover(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     modInv.in <== r;
     modInv.modulus <== order;
-    modInv.dummy <== dummy;
     
     component negateS = BigSub(CHUNK_SIZE, CHUNK_NUMBER);
     negateS.in[0] <== order;
     negateS.in[1] <== s;
-    negateS.dummy <== dummy;
 
     component genMult = EllipicCurveScalarGeneratorMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     genMult.scalar <== hashed;
-    genMult.dummy <== dummy;
     
     component scalarMult = EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, 4);
     scalarMult.scalar <== negateS.out;
-    scalarMult.dummy <== dummy;
     scalarMult.in[0] <== r;
     for (var i = 0; i < CHUNK_NUMBER; i++){
         scalarMult.in[1][i] <== switcher[i].out[0];
@@ -120,17 +110,14 @@ template EcRecover(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     component negateY2 = BigSub(CHUNK_SIZE, CHUNK_NUMBER);
     negateY2.in[0] <== P;
     negateY2.in[1] <== genMult.out[1];
-    negateY2.dummy <== dummy;
 
     component pointAdd = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     pointAdd.in1[0] <== genMult.out[0];
     pointAdd.in1[1] <== negateY2.out;
     pointAdd.in2 <== scalarMult.out;
-    pointAdd.dummy <== dummy;
 
     component scalarMult2 = EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, 4);
     scalarMult2.scalar <== modInv.out;
-    scalarMult2.dummy <== dummy;
     scalarMult2.in <== pointAdd.out;
 
     out <== scalarMult2.out;    

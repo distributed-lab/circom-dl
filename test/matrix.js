@@ -99,7 +99,7 @@ async function testMatrixAdd(input1, input2, circuit){
             real_result.push(input1[i][j] + input2[i][j]);
         }
     }
-    const w = await circuit.calculateWitness({in1: input1, in2: input2, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in1: input1, in2: input2}, true);
 
     let circuit_result = w.slice(1, 1+16);
 
@@ -113,7 +113,7 @@ async function testMatrixDeterminant(input1, circuit){
 
     let real_result = determinant(input1);
     
-    const w = await circuit.calculateWitness({in: input1, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input1}, true);
 
     let circuit_result = w.slice(1, 1+1);
 
@@ -126,7 +126,7 @@ async function testMatrixDeterminant(input1, circuit){
 async function testMatrixConvolation(input1, input2, step, circuit){
     const real_result = performConvolution(input1, input2, step);
 
-    const w = await circuit.calculateWitness({in: input1, filter: input2, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input1, filter: input2}, true);
 
     let circuit_result = w.slice(1, 1 + real_result.length);
 
@@ -156,7 +156,7 @@ async function testMatrixHadamard(input1, input2, circuit){
 async function testMatrixMultiply(input1, input2, circuit){
     let real_result = matrixMultiply(input1, input2).flat()
 
-    const w = await circuit.calculateWitness({in1: input1, in2: input2, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in1: input1, in2: input2}, true);
 
     let circuit_result = w.slice(1, 1+16);
 
@@ -169,7 +169,7 @@ async function testMatrixMultiply(input1, input2, circuit){
 async function testMatrixVecMultiply(input1, input2, circuit){
     let real_result = matrixMultiply(input1, input2).flat()
 
-    const w = await circuit.calculateWitness({in1: input1, in2: input2, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in1: input1, in2: input2}, true);
 
     let circuit_result = w.slice(1, 1+real_result.length);
 
@@ -183,7 +183,7 @@ async function testMatrixVecMultiply(input1, input2, circuit){
 async function testMatrixPow(input1, circuit){
     let real_result = matrixMultiply(matrixMultiply(input1, input1), input1).flat()
 
-    const w = await circuit.calculateWitness({in: input1, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input1}, true);
 
     let circuit_result = w.slice(1, 1+16);
 
@@ -200,7 +200,7 @@ async function testMatrixScalar(input1, input2, circuit){
             real_result.push(input1[i][j] * input2);
         }
     }
-    const w = await circuit.calculateWitness({in: input1, scalar: input2, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input1, scalar: input2}, true);
 
     let circuit_result = w.slice(1, 1+16);
 

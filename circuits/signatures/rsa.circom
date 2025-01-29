@@ -22,13 +22,12 @@ template RsaVerifyPkcs1v15(CHUNK_SIZE, CHUNK_NUMBER, EXP, HASH_TYPE) {
     signal input pubkey[CHUNK_NUMBER]; 
     signal input hashed[HASH_TYPE];
     
-    signal input dummy;
-    dummy * dummy === 0;
+    
+    
 
     if (HASH_TYPE == 256){
         // signature ** exp mod modulus
         component pm = PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP);
-        pm.dummy <== dummy;
         for (var i = 0; i < CHUNK_NUMBER; i++) {
             pm.base[i] <== signature[i];
             pm.modulus[i] <== pubkey[i];
@@ -73,7 +72,6 @@ template RsaVerifyPkcs1v15(CHUNK_SIZE, CHUNK_NUMBER, EXP, HASH_TYPE) {
     }
     if (HASH_TYPE == 160) {
         component pm = PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP);
-        pm.dummy <== dummy;
         for (var i  = 0; i < CHUNK_NUMBER; i++) {
             pm.base[i] <== signature[i];
             pm.modulus[i] <== pubkey[i];

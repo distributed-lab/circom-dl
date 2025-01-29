@@ -151,7 +151,7 @@ async function testVerNum(input1, input2, input3, input4, input5, circuit){
     let real_result = (p3.x == input3)
 
     try {
-        const w = await circuit.calculateWitness({ pubkey: input[0], signature: input[1], hashed: input[2], dummy: 0n }, true);
+        const w = await circuit.calculateWitness({ pubkey: input[0], signature: input[1], hashed: input[2] }, true);
 
         if (!real_result) {
             throw new Error(`Expected failure for verification (${input1}, ${input2}), (${input3}, ${input4}) ${input5}, but it passed.`);
@@ -181,7 +181,7 @@ async function testVerBits(input1, input2, input3, input4, input5, circuit){
     let real_result = (p3.x == input3)
 
     try {
-        const w = await circuit.calculateWitness({ pubkey: input[0], signature: input[1], hashed: input[2], dummy: 0n }, true);
+        const w = await circuit.calculateWitness({ pubkey: input[0], signature: input[1], hashed: input[2] }, true);
 
         if (!real_result) {
             throw new Error(`Expected failure for verification (${input1}, ${input2}), (${input3}, ${input4}) ${input5}, but it passed.`);

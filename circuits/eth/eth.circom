@@ -31,7 +31,6 @@ template GetEthAddrFromPubKey(CHUNK_SIZE, CHUNK_NUMBER){
     }
 
     hasher.in <== concated;
-    hasher.dummy <== 0;
 
     component b2n = Bits2Num(160);
     for (var i = 0; i < 160; i++){

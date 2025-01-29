@@ -8,7 +8,6 @@ template MatrixL2Dist(n1, m1) {
 
     signal output out;
     component sum = GetSumOfNElements(n1*m1);
-    sum.dummy <== 0;
 
     for (var i = 0; i < n1; i++) {
         for (var j = 0; j < m1; j++) {

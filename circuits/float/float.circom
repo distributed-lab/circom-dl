@@ -203,7 +203,7 @@ template CutPrecisionNew(precNew, precOld) {
 template Exp(n){
     assert(n >= 4);
     signal input in;
-    signal input dummy;
+    
     signal output out;
     
     component mult[n \ 2 - 1];
@@ -220,7 +220,6 @@ template Exp(n){
     
     var precompute[100] = precompute_exp_constants(n \ 2 + 1, n);
     component sum = GetSumOfNElements(n \ 2 + 1);
-    sum.dummy <== dummy;
     sum.in[0] <== precompute[0] * 2 ** n;
     for (var i = 1; i < n \ 2 + 1; i++){
         if (i == 1){
