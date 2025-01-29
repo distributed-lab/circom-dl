@@ -20,7 +20,7 @@ template verifyECDSABits(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, ALGO){
     signal input pubkey[2][CHUNK_NUMBER];
     signal input signature[2][CHUNK_NUMBER];
     signal input hashed[ALGO];
-    signal input dummy;
+    
 
     signal hashedChunked[CHUNK_NUMBER];
     
@@ -44,7 +44,6 @@ template verifyECDSABits(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, ALGO){
     
     modInv.in <== signature[1];
     modInv.modulus <== order;
-    modInv.dummy <== dummy;
     modInv.out ==> sinv;
     
     // (s ^ -1 mod n) * h mod n
@@ -52,31 +51,26 @@ template verifyECDSABits(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, ALGO){
     mult.in1 <== sinv;
     mult.in2 <== hashedChunked;
     mult.modulus <== order;
-    mult.dummy <== dummy;
 
     // (s ^ -1 mod n) * r mod n
     component mult2 = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
     mult2.in1 <== sinv;
     mult2.in2 <== signature[0];
     mult2.modulus <== order;
-    mult2.dummy <== dummy;
     
     // h * s_inv * G
     component scalarMult1 = EllipicCurveScalarGeneratorMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     scalarMult1.scalar <== mult.mod;
-    scalarMult1.dummy <== dummy;
     
     // r * s_inv * (x, y)
     component scalarMult2 = EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, 4);
     scalarMult2.scalar <== mult2.mod;
     scalarMult2.in <== pubkey;
-    scalarMult2.dummy <== dummy;
 
     // (x1, y1) = h * s_inv * G + r * s_inv * (x, y)
     component add = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     add.in1 <== scalarMult1.out;
     add.in2 <== scalarMult2.out;
-    add.dummy <== dummy;
 
     // x1 === r
     for (var i = 0; i < CHUNK_NUMBER; i++){
@@ -98,7 +92,7 @@ template verifyECDSABigInt(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input pubkey[2][CHUNK_NUMBER];
     signal input signature[2][CHUNK_NUMBER];
     signal input hashed[CHUNK_NUMBER];
-    signal input dummy;
+    
     
     component getOrder = EllipicCurveGetOrder(CHUNK_SIZE,CHUNK_NUMBER, A, B, P);
     signal order[CHUNK_NUMBER];
@@ -111,7 +105,6 @@ template verifyECDSABigInt(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     modInv.in <== signature[1];
     modInv.modulus <== order;
-    modInv.dummy <== dummy;
     modInv.out ==> sinv;
     
     // (s ^ -1 mod n) * h mod n
@@ -119,31 +112,26 @@ template verifyECDSABigInt(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     mult.in1 <== sinv;
     mult.in2 <== hashed;
     mult.modulus <== order;
-    mult.dummy <== dummy;
 
     // (s ^ -1 mod n) * r mod n
     component mult2 = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
     mult2.in1 <== sinv;
     mult2.in2 <== signature[0];
     mult2.modulus <== order;
-    mult2.dummy <== dummy;
     
     // h * s_inv * G
     component scalarMult1 = EllipicCurveScalarGeneratorMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     scalarMult1.scalar <== mult.mod;
-    scalarMult1.dummy <== dummy;
     
     // r * s_inv * (x, y)
     component scalarMult2 = EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, 4);
     scalarMult2.scalar <== mult2.mod;
     scalarMult2.in <== pubkey;
-    scalarMult2.dummy <== dummy;
 
     // (x1, y1) = h * s_inv * G + r * s_inv * (x, y)
     component add = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
     add.in1 <== scalarMult1.out;
     add.in2 <== scalarMult2.out;
-    add.dummy <== dummy;
 
     // x1 === r
     for (var i = 0; i < CHUNK_NUMBER; i++){

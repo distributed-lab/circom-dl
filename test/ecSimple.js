@@ -110,7 +110,7 @@ async function testOnCurve(input1, input2, circuit){
     let real_result = onCurveCheck(input1, input2, 0n, 7n, 115792089237316195423570985008687907853269984665640564039457584007908834671663n);
 
     try {
-        const w = await circuit.calculateWitness({ in: input, dummy: 0n }, true);
+        const w = await circuit.calculateWitness({ in: input }, true);
 
         if (!real_result) {
             throw new Error(`Expected failure for P(${input1}, ${input2}) not on curve, but it passed.`);
@@ -132,7 +132,7 @@ async function testDouble(input1, input2, circuit){
 
     let real_result = bigintToArray(64, 4, doubled.x).concat(bigintToArray(64, 4, doubled.y));
 
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+8);
 
@@ -149,7 +149,7 @@ async function testDoubleBrainpoolP256r1(input1, input2, circuit){
 
     let real_result = bigintToArray(64, 4, doubled.x).concat(bigintToArray(64, 4, doubled.y));
 
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+8);
 
@@ -164,7 +164,7 @@ async function testAdd(input1, input2, input3, input4, circuit){
 
     let real_result = bigintToArray(64, 4, added.x).concat(bigintToArray(64, 4, added.y));
 
-    const w = await circuit.calculateWitness({in1: [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)], in2: [bigintToArray(64, 4, input3), bigintToArray(64, 4, input4)], dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in1: [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)], in2: [bigintToArray(64, 4, input3), bigintToArray(64, 4, input4)]}, true);
 
     let circuit_result = w.slice(1, 1+8);
 
@@ -180,7 +180,7 @@ async function testAddBrainpoolP256r1(input1, input2, input3, input4, circuit){
 
     let real_result = bigintToArray(64, 4, added.x).concat(bigintToArray(64, 4, added.y));
 
-    const w = await circuit.calculateWitness({in1: [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)], in2: [bigintToArray(64, 4, input3), bigintToArray(64, 4, input4)], dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in1: [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)], in2: [bigintToArray(64, 4, input3), bigintToArray(64, 4, input4)]}, true);
 
     let circuit_result = w.slice(1, 1+8);
 

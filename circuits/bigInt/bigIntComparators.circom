@@ -152,7 +152,7 @@ template BigIntIsZero(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER) {
 template BigIntIsZeroModP(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NUMBER, CHUNK_NUMBER_MODULUS){
     signal input in[CHUNK_NUMBER];
     signal input modulus[CHUNK_NUMBER_MODULUS];
-    signal input dummy;
+    
     
     var CHUNK_NUMBER_DIV = MAX_CHUNK_NUMBER - CHUNK_NUMBER_MODULUS + 1;
     
@@ -177,12 +177,10 @@ template BigIntIsZeroModP(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NU
     if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
         mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
         mult.in2 <== modulus;
-        mult.dummy <== dummy;
         mult.in1 <== k;
     } else {
         mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
         mult.in1 <== modulus;
-        mult.dummy <== dummy;
         mult.in2 <== k;
     }
     

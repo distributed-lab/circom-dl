@@ -54,7 +54,7 @@ async function testInv(input1, input2, circuit){
 
     let real_result = bigintToArray(64, 4, modInverse(input1, input2));
 
-    const w = await circuit.calculateWitness({in: input[0], modulus: input[1], dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input[0], modulus: input[1]}, true);
 
     let circuit_result = w.slice(1, 1+4);
 

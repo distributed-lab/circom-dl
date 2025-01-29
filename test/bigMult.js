@@ -25,7 +25,7 @@ async function testMultiplying(input1, input2, circuit){
 
     let real_result = bigintToArray(64, 8, input1 * input2);
 
-    const w = await circuit.calculateWitness({in1: input[0], in2: input[1], dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in1: input[0], in2: input[1]}, true);
 
     let circuit_result = w.slice(1, 1+8);
 
@@ -40,7 +40,7 @@ async function testPowMod(input1, input2, circuit){
 
     let real_result = bigintToArray(64, 4, input1 ** 65537n % input2);
 
-    const w = await circuit.calculateWitness({base: input[0], modulus: input[1], dummy: 0n}, true);
+    const w = await circuit.calculateWitness({base: input[0], modulus: input[1]}, true);
 
     let circuit_result = w.slice(1, 1+4);
 
@@ -55,7 +55,7 @@ async function testNonEqualMultiplying(input1, input2, circuit){
 
     let real_result = bigintToArray(64, 10, input1 * input2);
 
-    const w = await circuit.calculateWitness({in1: input[0], in2: input[1], dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in1: input[0], in2: input[1]}, true);
 
     let circuit_result = w.slice(1, 1+10);
 

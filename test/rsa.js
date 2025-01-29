@@ -24,7 +24,7 @@ async function testRsa(input1, input2, input3, real_result, circuit){
 
     
     try {
-        const w = await circuit.calculateWitness({ pubkey: input[0], signature: input[1], hashed: input[2], dummy: 0n }, true);
+        const w = await circuit.calculateWitness({ pubkey: input[0], signature: input[1], hashed: input[2] }, true);
 
         if (!real_result) {
             throw new Error(`Expected failure for rsa verification, but it passed.`);
@@ -44,7 +44,7 @@ async function testRsaSha1(input1, input2, input3, real_result, circuit){
 
     
     try {
-        const w = await circuit.calculateWitness({ pubkey: input[0], signature: input[1], hashed: input[2], dummy: 0n }, true);
+        const w = await circuit.calculateWitness({ pubkey: input[0], signature: input[1], hashed: input[2] }, true);
 
         if (!real_result) {
             throw new Error(`Expected failure for rsaSha1 verification, but it passed.`);
@@ -62,7 +62,7 @@ async function testRsaPss(input1, input2, input3, real_result, circuit){
     let input = [bigintToArray(64, 48, input1), bigintToArray(64, 48, input2), input3];
 
     try {
-        const w = await circuit.calculateWitness({ pubkey: input[0], signature: input[1], hashed: input[2], dummy: 0n }, true);
+        const w = await circuit.calculateWitness({ pubkey: input[0], signature: input[1], hashed: input[2] }, true);
 
         if (!real_result) {
             throw new Error(`Expected failure for pss verification, but it passed.`);

@@ -47,7 +47,7 @@ async function testHash160Bits(input1, circuit){
 
     const input = hexToBitArray(input1)
 
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+160).join("");
 
@@ -69,7 +69,7 @@ async function testHash160Chunks(input1, circuit){
 
     const input = hexToBitArray(shaPadding(input1, 512))
     
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+160).join("");
 
@@ -91,7 +91,7 @@ async function testHash224Chunks(input1, circuit){
 
     const input = hexToBitArray(shaPadding(input1, 512))
     
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+224).join("");
 
@@ -113,7 +113,7 @@ async function testHash224Bits(input1, circuit){
 
     const input = hexToBitArray(input1)
 
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+224).join("");
 
@@ -135,7 +135,7 @@ async function testHash256Chunks(input1, circuit){
 
     const input = hexToBitArray(shaPadding(input1, 512))
     
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+256).join("");
 
@@ -157,7 +157,7 @@ async function testHash256Bits(input1, circuit){
 
     const input = hexToBitArray(input1)
 
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+256).join("");
 
@@ -179,7 +179,7 @@ async function testHash384Chunks(input1, circuit){
 
     const input = hexToBitArray(shaPadding(input1, 1024))
     
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+384).join("");
 
@@ -201,7 +201,7 @@ async function testHash384Bits(input1, circuit){
 
     const input = hexToBitArray(input1)
 
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+384).join("");
 
@@ -223,7 +223,7 @@ async function testHash512Chunks(input1, circuit){
 
     const input = hexToBitArray(shaPadding(input1, 1024))
     
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+512).join("");
 
@@ -245,7 +245,7 @@ async function testHash512Bits(input1, circuit){
 
     const input = hexToBitArray(input1)
 
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+512).join("");
 
@@ -268,7 +268,7 @@ async function testPoseidon(input1, circuit){
     const hash_0 = 19014214495641488759237505126948346942972912379615652741039992445865937985820n
     const hash_0_1 = 12583541437132735734108669866114103169564651237895298778035846191048104863326n
 
-    const w = await circuit.calculateWitness({in: input1, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input1}, true);
     let circuit_result = w.slice(1, 1+1)
     if (input1[0] == 0n && input1[1] == 1n){
         assert(circuit_result == hash_0_1, `${hash_0_1} != ${circuit_result}`);
@@ -281,7 +281,7 @@ async function testKeccak256(input1, circuit){
 
     const input = hexToBitArray(input1)
 
-    const w = await circuit.calculateWitness({in: input, dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input}, true);
 
     let circuit_result = w.slice(1, 1+256).join("");
 

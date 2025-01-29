@@ -190,7 +190,7 @@ async function testEcRecover(input1, circuit){
 
     let real_result = bigintToArray(64, 4, x).concat(bigintToArray(64, 4, y));
 
-    const w = await circuit.calculateWitness({r: bigintToArray(64, 4, r), s: bigintToArray(64, 4, s), hashed: bigintToArray(64, 4, input1), dummy: 0, v: BigInt(v)}, true);
+    const w = await circuit.calculateWitness({r: bigintToArray(64, 4, r), s: bigintToArray(64, 4, s), hashed: bigintToArray(64, 4, input1), v: BigInt(v)}, true);
 
     let circuit_result = w.slice(1, 1+8);
 

@@ -5,7 +5,7 @@ include "../int/arithmetic.circom";
 
 template MatrixSum(n1, m1, n) {
     signal input matrices[n][n1][m1];
-    signal input dummy;
+    
 
     signal output out[n1][m1];
 
@@ -16,7 +16,6 @@ template MatrixSum(n1, m1, n) {
             for (var k = 0; k < n; k++) {
                 sums[i][j].in[k] <== matrices[k][i][j];
             }
-            sums[i][j].dummy <== dummy;
             sums[i][j].out ==> out[i][j]; 
         }
     }
@@ -49,12 +48,12 @@ template Conv(n1, m1, n2, m2, step){
 
     signal input in[n1][m1];
     signal input filter[n2][m2];
-    signal input dummy;
+    
     
     var OUT_N = (n1 - n2) \ step + 1;
     var OUT_M = (m1 - m2) \ step + 1;
     
-    dummy * dummy === 0;
+    
     signal output out[OUT_N][OUT_M];
     
     component sum[OUT_N][OUT_M];
@@ -62,7 +61,6 @@ template Conv(n1, m1, n2, m2, step){
     for (var i = 0; i < OUT_N; i++){
         for (var j = 0; j < OUT_M; j++){
             sum[i][j] = GetSumOfNElements(n2 * m2);
-            sum[i][j].dummy <== dummy;
             for (var idx_x = 0; idx_x < n2; idx_x++){
                 for (var idx_y = 0; idx_y < m2; idx_y++){
                     sum[i][j].in[idx_x * m2 + idx_y] <== filter[idx_x][idx_y] * in[idx_x + i * step][idx_y + j * step];
@@ -79,7 +77,7 @@ template ConvNChannels1Filter(n1, m1, n2, m2, n, step) {
     assert(n1 >= n2 && (n1 - n2) % step == 0 && m1 >= m2 && (m1 - m2) % step == 0);
     signal input in[n][n1][m1];
     signal input filter[n2][m2];
-    signal input dummy;
+    
 
     var OUT_N = (n1 - n2) \ step + 1;
     var OUT_M = (m1 - m2) \ step + 1;
@@ -89,7 +87,6 @@ template ConvNChannels1Filter(n1, m1, n2, m2, n, step) {
         conv[i] = Conv(n1, m1, n2, m2, step);
         conv[i].in <== in[i];
         conv[i].filter <== filter;
-        conv[i].dummy <== dummy;
     }
     
     signal output out[OUT_N][OUT_M];
@@ -98,7 +95,6 @@ template ConvNChannels1Filter(n1, m1, n2, m2, n, step) {
     for (var i = 0; i < n; i++) {
         matrixsum.matrices[i] <== conv[i].out;
     }
-    matrixsum.dummy <== dummy;
 
 
     out <== matrixsum.out;
@@ -110,7 +106,7 @@ template ConvNChannelsBias1Filter(n1, m1, n2, m2, n, step) {
     assert(n1 >= n2 && (n1 - n2) % step == 0 && m1 >= m2 && (m1 - m2) % step == 0);
     signal input in[n][n1][m1];
     signal input filter[n2][m2];
-    signal input dummy;
+    
 
     var OUT_N = (n1 - n2) \ step + 1;
     var OUT_M = (m1 - m2) \ step + 1;
@@ -122,7 +118,6 @@ template ConvNChannelsBias1Filter(n1, m1, n2, m2, n, step) {
         conv[i] = Conv(n1, m1, n2, m2, step);
         conv[i].in <== in[i];
         conv[i].filter <== filter;
-        conv[i].dummy <== dummy;
     }
     
     signal output out[OUT_N][OUT_M];
@@ -133,9 +128,6 @@ template ConvNChannelsBias1Filter(n1, m1, n2, m2, n, step) {
     }
     
     matrixsum.matrices[n] <== bias;
-
-    matrixsum.dummy <== dummy;
-
 
     out <== matrixsum.out;
 
@@ -146,7 +138,7 @@ template ConvNChannelsConstantBias1Filter(n1, m1, n2, m2, n, step) {
     assert(n1 >= n2 && (n1 - n2) % step == 0 && m1 >= m2 && (m1 - m2) % step == 0);
     signal input in[n][n1][m1];
     signal input filter[n2][m2];
-    signal input dummy;
+    
 
     var OUT_N = (n1 - n2) \ step + 1;
     var OUT_M = (m1 - m2) \ step + 1;
@@ -158,7 +150,6 @@ template ConvNChannelsConstantBias1Filter(n1, m1, n2, m2, n, step) {
         conv[i] = Conv(n1, m1, n2, m2, step);
         conv[i].in <== in[i];
         conv[i].filter <== filter;
-        conv[i].dummy <== dummy;
     }
     
     signal output out[OUT_N][OUT_M];
@@ -173,9 +164,6 @@ template ConvNChannelsConstantBias1Filter(n1, m1, n2, m2, n, step) {
         }
     }
 
-    matrixsum.dummy <== dummy;
-
-
     out <== matrixsum.out;
 
     //var print = log_matrix(out, OUT_N, OUT_M);
@@ -185,7 +173,7 @@ template ConvNChannelsNFilter(n1, m1, n2, m2, n, step) {
     assert(n1 >= n2 && (n1 - n2) % step == 0 && m1 >= m2 && (m1 - m2) % step == 0);
     signal input in[n][n1][m1];
     signal input filter[n][n2][m2];
-    signal input dummy;
+    
 
     var OUT_N = (n1 - n2) \ step + 1;
     var OUT_M = (m1 - m2) \ step + 1;
@@ -195,7 +183,6 @@ template ConvNChannelsNFilter(n1, m1, n2, m2, n, step) {
         conv[i] = Conv(n1, m1, n2, m2, step);
         conv[i].in <== in[i];
         conv[i].filter <== filter[i];
-        conv[i].dummy <== dummy;
     }
     
     signal output out[OUT_N][OUT_M];
@@ -204,8 +191,6 @@ template ConvNChannelsNFilter(n1, m1, n2, m2, n, step) {
     for (var i = 0; i < n; i++) {
         matrixsum.matrices[i] <== conv[i].out;
     }
-    matrixsum.dummy <== dummy;
-
 
     out <== matrixsum.out;
 
@@ -216,7 +201,7 @@ template ConvNChannelsBiasNFilter(n1, m1, n2, m2, n, step) {
     assert(n1 >= n2 && (n1 - n2) % step == 0 && m1 >= m2 && (m1 - m2) % step == 0);
     signal input in[n][n1][m1];
     signal input filter[n][n2][m2];
-    signal input dummy;
+    
 
     var OUT_N = (n1 - n2) \ step + 1;
     var OUT_M = (m1 - m2) \ step + 1;
@@ -228,7 +213,6 @@ template ConvNChannelsBiasNFilter(n1, m1, n2, m2, n, step) {
         conv[i] = Conv(n1, m1, n2, m2, step);
         conv[i].in <== in[i];
         conv[i].filter <== filter[i];
-        conv[i].dummy <== dummy;
     }
     
     signal output out[OUT_N][OUT_M];
@@ -240,9 +224,6 @@ template ConvNChannelsBiasNFilter(n1, m1, n2, m2, n, step) {
     
     matrixsum.matrices[n] <== bias;
 
-    matrixsum.dummy <== dummy;
-
-
     out <== matrixsum.out;
 
     //var print = log_matrix(out, OUT_N, OUT_M);
@@ -252,7 +233,7 @@ template ConvNChannelsConstantBiasNFilter(n1, m1, n2, m2, n, step) {
     assert(n1 >= n2 && (n1 - n2) % step == 0 && m1 >= m2 && (m1 - m2) % step == 0);
     signal input in[n][n1][m1];
     signal input filter[n][n2][m2];
-    signal input dummy;
+    
 
     var OUT_N = (n1 - n2) \ step + 1;
     var OUT_M = (m1 - m2) \ step + 1;
@@ -264,7 +245,6 @@ template ConvNChannelsConstantBiasNFilter(n1, m1, n2, m2, n, step) {
         conv[i] = Conv(n1, m1, n2, m2, step);
         conv[i].in <== in[i];
         conv[i].filter <== filter[i];
-        conv[i].dummy <== dummy;
     }
     
     signal output out[OUT_N][OUT_M];
@@ -278,9 +258,6 @@ template ConvNChannelsConstantBiasNFilter(n1, m1, n2, m2, n, step) {
             matrixsum.matrices[n][i][j] <== bias;
         }
     }
-
-    matrixsum.dummy <== dummy;
-
 
     out <== matrixsum.out;
 

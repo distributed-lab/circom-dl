@@ -23,8 +23,8 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
     signal input signature[CHUNK_NUMBER];
     signal input hashed[HASH_TYPE]; 
 
-    signal input dummy;
-    dummy * dummy === 0;
+    
+    
 
     var EM_LEN = (CHUNK_SIZE * CHUNK_NUMBER) \ 8; 
     var HASH_LEN = HASH_TYPE \ 8; 
@@ -40,7 +40,6 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
 
     powerMod.base <== signature;
     powerMod.modulus <== pubkey;
-    powerMod.dummy <== dummy;
     
     
     signal encoded[CHUNK_NUMBER];
@@ -93,7 +92,6 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
     //getting mask
     if (HASH_TYPE == 256){
         component MGF1_256 = Mgf1Sha256(HASH_LEN, DB_MASK_LEN);
-        MGF1_256.dummy <== dummy;
         for (var i = 0; i < HASH_TYPE; i++) {
             MGF1_256.seed[i] <== hash[i];
         }
@@ -103,7 +101,6 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
     }
     if (HASH_TYPE == 384){
         component MGF1_384 = Mgf1Sha384(HASH_LEN, DB_MASK_LEN);
-        MGF1_384.dummy <== dummy;
         for (var i = 0; i < HASH_TYPE; i++) {
             MGF1_384.seed[i] <== hash[i];
         }
@@ -113,7 +110,6 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
     }
     if (HASH_TYPE == 512){
         component MGF1_512 = Mgf1Sha512(HASH_LEN, DB_MASK_LEN);
-        MGF1_512.dummy <== dummy;
         for (var i = 0; i < HASH_TYPE; i++) {
             MGF1_512.seed[i] <== hash[i];
         }
@@ -182,7 +178,6 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
         
         //hashing
         component hDash256 = ShaHashChunks(2, HASH_TYPE);
-        hDash256.dummy <== dummy;
         hDash256.in <== mDash;
         hDash256.out === hash;
     }
@@ -202,7 +197,6 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
         mDash[1015] <== 1;
         mDash[1014] <== 1;
         component hDash256 = ShaHashChunks(2, HASH_TYPE);
-        hDash256.dummy <== dummy;
         hDash256.in <== mDash;
         hDash256.out === hash;
     }
@@ -227,7 +221,6 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
         
         //hashing mDash
         component hDash384 = ShaHashChunks(1, HASH_TYPE);
-        hDash384.dummy <== dummy;
         hDash384.in <== mDash;
         hDash384.out === hash;
     }
@@ -254,7 +247,6 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
         //hashing mDash
         component hDash512 = ShaHashChunks(2, HASH_TYPE);
         hDash512.in <== mDash;
-        hDash512.dummy <== dummy;
         hDash512.out === hash;
         
 

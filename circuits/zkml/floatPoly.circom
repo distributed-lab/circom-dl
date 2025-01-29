@@ -8,12 +8,11 @@ template CalculatePolynomial(deg, prec, intprec) {
     //log(1 << prec);
     signal input coef[deg+1];
     signal input value;
-    signal input dummy;
+    
 
     signal powers[deg+1];
 
     component sum = GetSumOfNElements(deg+1);
-    sum.dummy <== dummy;
     component cut[(deg-1) \ (maxdeg-1) + 1];
     for (var i = 0; i < deg + 1; i++) {
         if (i == 0) {

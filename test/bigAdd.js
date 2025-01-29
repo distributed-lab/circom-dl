@@ -25,7 +25,7 @@ async function testAdding(input1, input2, circuit){
 
     let real_result = bigintToArray(64, 5, input1 + input2);
 
-    const w = await circuit.calculateWitness({in1: input[0], in2: input[1], dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in1: input[0], in2: input[1]}, true);
 
     let circuit_result = w.slice(1, 1+5);
 
@@ -39,7 +39,7 @@ async function testAddingNonEqual(input1, input2, circuit){
 
     let real_result = bigintToArray(64, 7, input1 + input2);
 
-    const w = await circuit.calculateWitness({in1: input[0], in2: input[1], dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in1: input[0], in2: input[1]}, true);
 
     let circuit_result = w.slice(1, 1+7);
 

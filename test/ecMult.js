@@ -135,7 +135,7 @@ async function testScalarMult(input1, input2, input3, circuit){
 
     let real_result = bigintToArray(64, 4, mult.x).concat(bigintToArray(64, 4, mult.y));
 
-    const w = await circuit.calculateWitness({in: input, scalar: bigintToArray(64, 4, input3), dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input, scalar: bigintToArray(64, 4, input3)}, true);
 
     let circuit_result = w.slice(1, 1+8);
 
@@ -151,7 +151,7 @@ async function testScalarMultBrainpoolP256r1(input1, input2, input3, circuit){
 
     let real_result = bigintToArray(64, 4, mult.x).concat(bigintToArray(64, 4, mult.y));
 
-    const w = await circuit.calculateWitness({in: input, scalar: bigintToArray(64, 4, input3), dummy: 0n}, true);
+    const w = await circuit.calculateWitness({in: input, scalar: bigintToArray(64, 4, input3)}, true);
 
     let circuit_result = w.slice(1, 1+8);
 
@@ -166,7 +166,7 @@ async function testGenMult(input1, circuit){
 
     let real_result = bigintToArray(64, 4, mult.x).concat(bigintToArray(64, 4, mult.y));
 
-    const w = await circuit.calculateWitness({scalar: bigintToArray(64, 4, input1), dummy: 0n}, true);
+    const w = await circuit.calculateWitness({scalar: bigintToArray(64, 4, input1)}, true);
 
     let circuit_result = w.slice(1, 1+8);
 
@@ -181,7 +181,7 @@ async function testGenMultBrainpoolP256r1(input1, circuit){
 
     let real_result = bigintToArray(64, 4, mult.x).concat(bigintToArray(64, 4, mult.y));
 
-    const w = await circuit.calculateWitness({scalar: bigintToArray(64, 4, input1), dummy: 0n}, true);
+    const w = await circuit.calculateWitness({scalar: bigintToArray(64, 4, input1)}, true);
 
     let circuit_result = w.slice(1, 1+8);
 
