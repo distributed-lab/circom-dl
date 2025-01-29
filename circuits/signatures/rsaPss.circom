@@ -13,11 +13,11 @@ include "../hasher/hash.circom";
 // default exp = 65537 
 // SALT_LEN is salt lenght in bytes! (NOT IN BITES LIKE HASH_TYPE!)
 // This is because salt len can`t be % 8 != 0 so we use bytes len (8 bites) 
-// For now, only HASH_TYPE == 384 && SALT_LEN == 48,  HASH_TYPE == 256 && SALT_LEN == 64, HASH_TYPE == 256 && SALT_LEN == 32 cases supported
+// For now, only HASH_TYPE == 384 && SALT_LEN == 48,  HASH_TYPE == 256 && SALT_LEN == 64, HASH_TYPE == 256 && SALT_LEN == 32, HASH_TYPE == 512 && SALT_LEN == 64 cases supported
 // use this for CHUNK_NUMBER == 2**n, otherwise error will occur
 template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
     
-    assert((HASH_TYPE == 384 && SALT_LEN == 48) || (HASH_TYPE == 256 && SALT_LEN == 64) || (HASH_TYPE == 256 && SALT_LEN == 32));
+    assert((HASH_TYPE == 384 && SALT_LEN == 48) || (HASH_TYPE == 256 && SALT_LEN == 64) || (HASH_TYPE == 256 && SALT_LEN == 32) || (HASH_TYPE == 512 && SALT_LEN == 64));
     
     signal input pubkey[CHUNK_NUMBER]; 
     signal input signature[CHUNK_NUMBER];
@@ -36,10 +36,7 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
     
     //computing encoded message
 
-    component powerMod;
-    var isPowerOfTwo = 0;
-
-    powerMod = PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP);
+    component powerMod = PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP);
 
     powerMod.base <== signature;
     powerMod.modulus <== pubkey;
@@ -97,7 +94,7 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
     if (HASH_TYPE == 256){
         component MGF1_256 = Mgf1Sha256(HASH_LEN, DB_MASK_LEN);
         MGF1_256.dummy <== dummy;
-        for (var i = 0; i < (HASH_TYPE); i++) {
+        for (var i = 0; i < HASH_TYPE; i++) {
             MGF1_256.seed[i] <== hash[i];
         }
         for (var i = 0; i < DB_MASK_LEN * 8; i++) {
@@ -107,11 +104,21 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
     if (HASH_TYPE == 384){
         component MGF1_384 = Mgf1Sha384(HASH_LEN, DB_MASK_LEN);
         MGF1_384.dummy <== dummy;
-        for (var i = 0; i < (HASH_TYPE); i++) {
+        for (var i = 0; i < HASH_TYPE; i++) {
             MGF1_384.seed[i] <== hash[i];
         }
         for (var i = 0; i < DB_MASK_LEN * 8; i++) {
             dbMask[i] <== MGF1_384.out[i];
+        }
+    }
+    if (HASH_TYPE == 512){
+        component MGF1_512 = Mgf1Sha512(HASH_LEN, DB_MASK_LEN);
+        MGF1_512.dummy <== dummy;
+        for (var i = 0; i < HASH_TYPE; i++) {
+            MGF1_512.seed[i] <== hash[i];
+        }
+        for (var i = 0; i < DB_MASK_LEN * 8; i++) {
+            dbMask[i] <== MGF1_512.out[i];
         }
     }
 
@@ -134,7 +141,13 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
         salt[SALT_LEN_BITS - 1 - i] <== db[(DB_MASK_LEN * 8) - 1 - i];
     }
     
-    signal mDash[1024];
+    // 1 block
+    var M_DASH_LEN = 1024;
+    // 2 blocks for hash
+    if (HASH_TYPE == 512 && SALT_LEN == 64){
+        M_DASH_LEN = 2048;
+    }
+    signal mDash[M_DASH_LEN];
     //adding 0s
     for (var i = 0; i < 64; i++) {
         mDash[i] <== 0;
@@ -217,5 +230,33 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
         hDash384.dummy <== dummy;
         hDash384.in <== mDash;
         hDash384.out === hash;
+    }
+    if (HASH_TYPE == 512 && SALT_LEN == 64){
+
+        //padding
+        //len = 64+64*16 = 1088 = 10001000000
+        for (var i = 1089; i < 2037; i++){
+            mDash[i] <== 0;
+        }
+        mDash[1088] <== 1;
+        mDash[2047] <== 0;
+        mDash[2046] <== 0;
+        mDash[2045] <== 0;
+        mDash[2044] <== 0;
+        mDash[2043] <== 0;
+        mDash[2042] <== 0;
+        mDash[2041] <== 1;
+        mDash[2040] <== 0;
+        mDash[2039] <== 0;
+        mDash[2038] <== 0;
+        mDash[2037] <== 1;
+
+        //hashing mDash
+        component hDash512 = ShaHashChunks(2, HASH_TYPE);
+        hDash512.in <== mDash;
+        hDash512.dummy <== dummy;
+        hDash512.out === hash;
+        
+
     }
 }
