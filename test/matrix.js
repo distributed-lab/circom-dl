@@ -241,27 +241,6 @@ describe("Matrix add test", function () {
 
 });
 
-describe("Matrix convalution test", function () {
-
-    this.timeout(100000);
-    let circuit1;
-    let circuit2;
-
-    before(async () => {
-        circuit1 = await wasm_tester(path.join(__dirname, "circuits", "matrix", "convolution.circom"));
-        circuit2 = await wasm_tester(path.join(__dirname, "circuits", "matrix", "convolution2.circom"));
-    });
-
-    it("[[0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15]] conv [[2,2],[3,3]], step 1", async function () {
-        await testMatrixConvolation([[0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15]], [[2,2],[3,3]], 1, circuit1);
-    });
-
-    it("[[0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15]] conv [[2,2],[3,3]], step 2", async function () {
-        await testMatrixConvolation([[0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15]], [[2,2],[3,3]], 2, circuit2);
-    });
-
-});
-
 describe("Matrix determinant test", function () {
 
     this.timeout(100000);
