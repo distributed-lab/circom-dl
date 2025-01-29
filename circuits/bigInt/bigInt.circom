@@ -1,9 +1,5 @@
 pragma circom  2.1.6;
-pragma circom  2.1.6;
 
-include "bigIntHelpers.circom";
-include "bigIntOverflow.circom";
-include "bigIntComparators.circom";
 include "bigIntHelpers.circom";
 include "bigIntOverflow.circom";
 include "bigIntComparators.circom";
@@ -20,7 +16,6 @@ include "../bitify/bitify.circom";
 // To reduce overflow we must leave N[i] % 2 ** n for N[i] and add N[i] // 2 ** n to N[i + 1]
 // If u want to do many operation in a row, it is better to use overflow operations from "./bigIntOverflow" and then just reduce overflow from result
 
-// If u want to convert any number to this representation, u can this python3 function:
 // If u want to convert any number to this representation, u can this python3 function:
 // ```
 // def bigint_to_array(n, k, x):
@@ -40,11 +35,8 @@ include "../bitify/bitify.circom";
 // ```
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 // Get sum of each chunk with same positions
-// Out has no overflow and has CHUNK_NUMBER_GREATER + 1 chunks
-template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
 // Out has no overflow and has CHUNK_NUMBER_GREATER + 1 chunks
 template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     
@@ -61,13 +53,6 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     bigAddOverflow.in2 <== in2;
     bigAddOverflow.dummy <== dummy;
     
-    component num2bits[CHUNK_NUMBER_GREATER];
-    
-    component bigAddOverflow = BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
-    bigAddOverflow.in1 <== in1;
-    bigAddOverflow.in2 <== in2;
-    bigAddOverflow.dummy <== dummy;
-    
     for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
         num2bits[i] = Num2Bits(CHUNK_SIZE + 1);
         
@@ -78,25 +63,7 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
             num2bits[i].in <== bigAddOverflow.out[i] + num2bits[i - 1].out[CHUNK_SIZE] + dummy * dummy;
         }
     }
-        num2bits[i] = Num2Bits(CHUNK_SIZE + 1);
-        
-        //if >= 2**CHUNK_SIZE, overflow
-        if (i == 0){
-            num2bits[i].in <== bigAddOverflow.out[i];
-        } else {
-            num2bits[i].in <== bigAddOverflow.out[i] + num2bits[i - 1].out[CHUNK_SIZE] + dummy * dummy;
-        }
-    }
     
-    for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
-        if (i == 0) {
-            out[i] <== bigAddOverflow.out[i] - (num2bits[i].out[CHUNK_SIZE]) * (2 ** CHUNK_SIZE) + dummy * dummy;
-        }
-        else {
-            out[i] <== bigAddOverflow.out[i] - (num2bits[i].out[CHUNK_SIZE]) * (2 ** CHUNK_SIZE) + num2bits[i - 1].out[CHUNK_SIZE] + dummy * dummy;
-        }
-    }
-    out[CHUNK_NUMBER_GREATER] <== num2bits[CHUNK_NUMBER_GREATER - 1].out[CHUNK_SIZE];
     for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
         if (i == 0) {
             out[i] <== bigAddOverflow.out[i] - (num2bits[i].out[CHUNK_SIZE]) * (2 ** CHUNK_SIZE) + dummy * dummy;
@@ -108,9 +75,6 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     out[CHUNK_NUMBER_GREATER] <== num2bits[CHUNK_NUMBER_GREATER - 1].out[CHUNK_SIZE];
 }
 
-// Get multiplication of 2 numbers with CHUNK_NUMBER chunks
-// out is 2 * CHUNK_NUMBER chunks without overflows
-template BigMult(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
 // Get multiplication of 2 numbers with CHUNK_NUMBER chunks
 // out is 2 * CHUNK_NUMBER chunks without overflows
 template BigMult(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
@@ -118,59 +82,6 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     signal input in2[CHUNK_NUMBER_LESS];
     signal input dummy;
     signal output out[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS];
-    
-    component bigMultOverflow = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
-    bigMultOverflow.in1 <== in1;
-    bigMultOverflow.in2 <== in2;
-    bigMultOverflow.dummy <== dummy;
-    
-    component num2bits[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
-    component bits2numOverflow[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
-    component bits2numModulus[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
-    //overflow = no carry (multiplication result / 2 ** chunk_size) === chunk_size first bits in result
-    for (var i = 0; i < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1; i++){
-        //bigMultNoCarry = CHUNK_i * CHUNK_j (2 * CHUNK_SIZE) + CHUNK_i0 * CHUNK_j0 (2 * CHUNK_SIZE) + ..., up to len times,
-        // => 2 * CHUNK_SIZE + ADDITIONAL_LEN
-        var ADDITIONAL_LEN = i;
-        if (i >= CHUNK_NUMBER_LESS){
-            ADDITIONAL_LEN = CHUNK_NUMBER_LESS - 1;
-        }
-        if (i >= CHUNK_NUMBER_GREATER){
-            ADDITIONAL_LEN = CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1 - i;
-        }
-        
-        
-        num2bits[i] = Num2Bits(CHUNK_SIZE * 2 + ADDITIONAL_LEN);
-        
-        if (i == 0){
-            num2bits[i].in <== bigMultOverflow.out[i];
-        } else {
-            num2bits[i].in <== bigMultOverflow.out[i] + bits2numOverflow[i - 1].out + dummy * dummy;
-        }
-        
-        bits2numOverflow[i] = Bits2Num(CHUNK_SIZE + ADDITIONAL_LEN);
-        for (var j = 0; j < CHUNK_SIZE + ADDITIONAL_LEN; j++){
-            bits2numOverflow[i].in[j] <== num2bits[i].out[CHUNK_SIZE + j];
-        }
-        
-        bits2numModulus[i] = Bits2Num(CHUNK_SIZE);
-        for (var j = 0; j < CHUNK_SIZE; j++){
-            bits2numModulus[i].in[j] <== num2bits[i].out[j];
-        }
-    }
-    for (var i = 0; i < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS; i++){
-        if (i == CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1){
-            out[i] <== bits2numOverflow[i - 1].out;
-        } else {
-            out[i] <== bits2numModulus[i].out;
-        }
-    }
-}
-
-// Get base % modulus and base // modulus
-template BigMod(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
-    assert(CHUNK_NUMBER_BASE <= 252);
-    assert(CHUNK_NUMBER_MODULUS <= 252);
     
     component bigMultOverflow = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
     bigMultOverflow.in1 <== in1;
@@ -238,22 +149,13 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     
     var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV - 1, base, modulus);
     
-    
-    var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV - 1, base, modulus);
-    
     for (var i = 0; i < CHUNK_NUMBER_DIV; i++){
         div[i] <-- long_division[0][i];
         
-        
     }
-    component modChecks[CHUNK_NUMBER_MODULUS];
     component modChecks[CHUNK_NUMBER_MODULUS];
     for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++){
         mod[i] <-- long_division[1][i];
-        // Check to avoid negative numbers
-        modChecks[i] = Num2Bits(CHUNK_SIZE);
-        modChecks[i].in <== mod[i];
-        
         // Check to avoid negative numbers
         modChecks[i] = Num2Bits(CHUNK_SIZE);
         modChecks[i].in <== mod[i];
@@ -289,40 +191,12 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     component checkCarry = BigIntIsZero(CHUNK_SIZE, CHUNK_SIZE * 2 + log_ceil(CHUNK_NUMBER_MODULUS + CHUNK_NUMBER_DIV - 1), CHUNK_NUMBER_BASE);
     for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++) {
         checkCarry.in[i] <== base[i] - mult.out[i] - mod[i];
-    component mult;
-    
-    if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
-        mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
-        mult.dummy <== dummy;
-        
-        mult.in1 <== div;
-        mult.in2 <== modulus;
-    } else {
-        mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
-        mult.dummy <== dummy;
-        
-        mult.in2 <== div;
-        mult.in1 <== modulus;
-    }
-    
-    for (var i = CHUNK_NUMBER_BASE - 1; i < CHUNK_NUMBER_MODULUS + CHUNK_NUMBER_DIV - 1; i++){
-        mult.out[i] === 0;
-    }
-    
-    component checkCarry = BigIntIsZero(CHUNK_SIZE, CHUNK_SIZE * 2 + log_ceil(CHUNK_NUMBER_MODULUS + CHUNK_NUMBER_DIV - 1), CHUNK_NUMBER_BASE);
-    for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++) {
-        checkCarry.in[i] <== base[i] - mult.out[i] - mod[i];
-    }
-    for (var i = CHUNK_NUMBER_MODULUS; i < CHUNK_NUMBER_BASE; i++) {
-        checkCarry.in[i] <== base[i] - mult.out[i];
     }
     for (var i = CHUNK_NUMBER_MODULUS; i < CHUNK_NUMBER_BASE; i++) {
         checkCarry.in[i] <== base[i] - mult.out[i];
     }
 }
 
-// Get in1 * in2 % modulus and in1 * in2 // modulus
-template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_NUMBER_MODULUS){
 // Get in1 * in2 % modulus and in1 * in2 // modulus
 template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_NUMBER_MODULUS){
     signal input in1[CHUNK_NUMBER_GREATER];
@@ -335,61 +209,7 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
 
     signal output div[CHUNK_NUMBER_DIV];
     signal output mod[CHUNK_NUMBER_MODULUS];
-
-    var CHUNK_NUMBER_BASE = CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS;
-    var CHUNK_NUMBER_DIV = CHUNK_NUMBER_BASE - CHUNK_NUMBER_MODULUS + 1;
-
-    signal output div[CHUNK_NUMBER_DIV];
-    signal output mod[CHUNK_NUMBER_MODULUS];
     
-    component mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
-    mult.in1 <== in1;
-    mult.in2 <== in2;
-    mult.dummy <== dummy;
-
-    var reduced[200] = reduce_overflow(CHUNK_SIZE, CHUNK_NUMBER_BASE - 1, CHUNK_NUMBER_BASE, mult.out);
-    var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV - 1, reduced, modulus);
-    
-    for (var i = 0; i < CHUNK_NUMBER_DIV; i++){
-        div[i] <-- long_division[0][i];
-
-    }
-    component modChecks[CHUNK_NUMBER_MODULUS];
-    for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++){
-        mod[i] <-- long_division[1][i];
-        // Check to avoid negative numbers
-        modChecks[i] = Num2Bits(CHUNK_SIZE);
-        modChecks[i].in <== mod[i];
-
-    }
-    
-    component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER_MODULUS);
-    
-    greaterThan.in[0] <== modulus;
-    greaterThan.in[1] <== mod;
-    greaterThan.out === 1;
-    
-    component mult2;
-    if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
-        mult2 = BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
-        
-        mult2.in1 <== div;
-        mult2.in2 <== modulus;
-        mult2.dummy <== dummy;
-    } else {
-        mult2 = BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV);
-        
-        mult2.in2 <== div;
-        mult2.in1 <== modulus;
-        mult2.dummy <== dummy;
-    }
-    
-    component isZero = BigIntIsZero(CHUNK_SIZE, CHUNK_SIZE * 2 + log_ceil(CHUNK_NUMBER_MODULUS + CHUNK_NUMBER_DIV - 1), CHUNK_NUMBER_BASE - 1);
-    for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++) {
-        isZero.in[i] <== mult.out[i] - mult2.out[i] - mod[i];
-    }
-    for (var i = CHUNK_NUMBER_MODULUS; i < CHUNK_NUMBER_BASE - 1; i++) {
-        isZero.in[i] <== mult.out[i] - mult2.out[i];
     component mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
     mult.in1 <== in1;
     mult.in2 <== in2;
@@ -448,11 +268,6 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
 // if CHUNK_NUMBER_BASE < CHUNK_NUMBER_MODULUS, just put zero in first chunk, this won`t affect at constraints
 // we will get CHUNK_NUMBER_MODULUS num after first multiplication anyway
 template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
-// CHUNK_NUMBER_BASE == CHUNK_NUMBER_MODULUS because other options don`t have much sense:
-// if CHUNK_NUMBER_BASE > CHUNK_NUMBER_MODULUS, do one mod before and get less constraints
-// if CHUNK_NUMBER_BASE < CHUNK_NUMBER_MODULUS, just put zero in first chunk, this won`t affect at constraints
-// we will get CHUNK_NUMBER_MODULUS num after first multiplication anyway
-template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
 
     assert(EXP >= 2);
     
@@ -469,29 +284,20 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
     
     for (var i = 0; i < exp_process[0]; i++){
         muls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
-        muls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
         muls[i].dummy <== dummy;
-        muls[i].modulus <== modulus;
         muls[i].modulus <== modulus;
     }
     
     for (var i = 0; i < exp_process[1] - 1; i++){
         resultMuls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
-        resultMuls[i] = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
         resultMuls[i].dummy <== dummy;
-        resultMuls[i].modulus <== modulus;
         resultMuls[i].modulus <== modulus;
     }
 
     muls[0].in1 <== base;
     muls[0].in2 <== base;
-
-    muls[0].in1 <== base;
-    muls[0].in2 <== base;
     
     for (var i = 1; i < exp_process[0]; i++){
-        muls[i].in1 <== muls[i - 1].mod;
-        muls[i].in2 <== muls[i - 1].mod;
         muls[i].in1 <== muls[i - 1].mod;
         muls[i].in2 <== muls[i - 1].mod;
     }
@@ -500,17 +306,12 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
         if (i == 0){
             if (exp_process[i + 2] == 0){
                 resultMuls[i].in1 <== base;
-                resultMuls[i].in1 <== base;
             } else {
-                resultMuls[i].in1 <== muls[exp_process[i + 2] - 1].mod;
                 resultMuls[i].in1 <== muls[exp_process[i + 2] - 1].mod;
             }
             resultMuls[i].in2 <== muls[exp_process[i + 3] - 1].mod;
-            resultMuls[i].in2 <== muls[exp_process[i + 3] - 1].mod;
         }
         else {
-            resultMuls[i].in1 <== resultMuls[i - 1].mod;
-            resultMuls[i].in2 <== muls[exp_process[i + 3] - 1].mod;
             resultMuls[i].in1 <== resultMuls[i - 1].mod;
             resultMuls[i].in2 <== muls[exp_process[i + 3] - 1].mod;
         }
@@ -518,9 +319,7 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
 
     if (exp_process[1] == 1){
         out <== muls[exp_process[0] - 1].mod;
-        out <== muls[exp_process[0] - 1].mod;
     } else {
-        out <== resultMuls[exp_process[1] - 2].mod;
         out <== resultMuls[exp_process[1] - 2].mod;
     }
 }
