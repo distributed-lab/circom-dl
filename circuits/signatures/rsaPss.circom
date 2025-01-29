@@ -141,7 +141,9 @@ template VerifyRsaPssSig(CHUNK_SIZE, CHUNK_NUMBER, SALT_LEN, EXP, HASH_TYPE){
         salt[SALT_LEN_BITS - 1 - i] <== db[(DB_MASK_LEN * 8) - 1 - i];
     }
     
+    // 1 block
     var M_DASH_LEN = 1024;
+    // 2 blocks for hash
     if (HASH_TYPE == 512 && SALT_LEN == 64){
         M_DASH_LEN = 2048;
     }
