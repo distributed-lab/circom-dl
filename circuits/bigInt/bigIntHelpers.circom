@@ -1,5 +1,9 @@
 pragma circom  2.1.6;
 
+include "../bitify/bitify.circom";
+include "../bitify/comparators.circom";
+include "./bigIntFunc.circom";
+include "../utils/switcher.circom";
 
 // Calculates 2 numbers with CHUNK_NUMBER multiplication using karatsuba method
 // out is overflowed
@@ -117,6 +121,137 @@ template BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_
                 }
                 out[i] <== tmpResult[i][CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 2 - i];
             }
+        }
+    }
+}
+
+template RemoveOverflow(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NUMBER){
+    assert (CHUNK_NUMBER <= MAX_CHUNK_NUMBER);
+    
+    signal input in[CHUNK_NUMBER];
+    signal output out[MAX_CHUNK_NUMBER];
+    
+    signal signs[MAX_CHUNK_SIZE];
+    component signSwitchers[MAX_CHUNK_NUMBER];
+    component getDiv[MAX_CHUNK_NUMBER];
+    component getMod[MAX_CHUNK_NUMBER];
+    component num2Bits[MAX_CHUNK_NUMBER];
+    component isZero[MAX_CHUNK_NUMBER];
+    component zeroSwitcher[MAX_CHUNK_NUMBER];
+    component modSwitcher[MAX_CHUNK_NUMBER];
+    signal overflows[MAX_CHUNK_NUMBER];
+    
+    
+    for (var i = 0; i < CHUNK_NUMBER; i++){
+        if (i != MAX_CHUNK_NUMBER - 1){
+            signSwitchers[i] = Switcher();
+            modSwitcher[i] = Switcher();
+            zeroSwitcher[i] = Switcher();
+            isZero[i] = IsZero();
+            num2Bits[i] = Num2Bits(MAX_CHUNK_SIZE + 1); 
+            getMod[i] = Bits2Num(CHUNK_SIZE);
+            getDiv[i] = Bits2Num(MAX_CHUNK_SIZE - CHUNK_SIZE + 1);
+        }
+        if (i == 0){
+            signs[i] <-- is_negative_chunk(in[i], MAX_CHUNK_SIZE);
+            signs[i] * (1 - signs[i]) === 0;
+            
+            signSwitchers[i].bool <== signs[i];
+            signSwitchers[i].in[0] <== in[i];
+            signSwitchers[i].in[1] <==  -in[i];
+            
+            num2Bits[i].in <== signSwitchers[i].out[0];
+            for (var j = 0; j < CHUNK_SIZE; j++){
+                getMod[i].in[j] <== num2Bits[i].out[j];
+            }
+            isZero[i].in <== getMod[i].out;
+            modSwitcher[i].in[0] <== getMod[i].out;
+            modSwitcher[i].in[1] <== 2 ** CHUNK_SIZE - getMod[i].out;
+            modSwitcher[i].bool <== signs[i];
+            
+            zeroSwitcher[i].bool <== isZero[i].out;
+            zeroSwitcher[i].in[0] <== modSwitcher[i].out[0];
+            zeroSwitcher[i].in[1] <== 0;
+            
+            out[i] <== zeroSwitcher[i].out[0];
+            
+            for (var j = 0; j < MAX_CHUNK_SIZE - CHUNK_SIZE + 1; j++){
+                getDiv[i].in[j] <== num2Bits[i].out[j + CHUNK_SIZE];
+            }
+            overflows[i] <== getDiv[i].out + signs[i] * (1 - isZero[i].out); 
+        } else {
+            if (i != MAX_CHUNK_NUMBER - 1){
+                signs[i] <-- is_negative_chunk(in[i] + overflows[i - 1] * (- 2 * signs[i - 1] + 1), MAX_CHUNK_SIZE);
+                signs[i] * (1 - signs[i]) === 0;
+                
+                signSwitchers[i].bool <== signs[i];
+                signSwitchers[i].in[0] <== in[i] + overflows[i - 1] * (-2 * signs[i - 1] + 1);
+                signSwitchers[i].in[1] <==  -(in[i] + overflows[i - 1] * (-2 * signs[i - 1] + 1));
+                
+                num2Bits[i].in <== signSwitchers[i].out[0];
+                for (var j = 0; j < CHUNK_SIZE; j++){
+                    getMod[i].in[j] <== num2Bits[i].out[j];
+                }
+                isZero[i].in <== getMod[i].out;
+                modSwitcher[i].in[0] <== getMod[i].out;
+                modSwitcher[i].in[1] <== 2 ** CHUNK_SIZE - getMod[i].out;
+                modSwitcher[i].bool <== signs[i];
+                
+                zeroSwitcher[i].bool <== isZero[i].out;
+                zeroSwitcher[i].in[0] <== modSwitcher[i].out[0];
+                zeroSwitcher[i].in[1] <== 0;
+                
+                out[i] <== zeroSwitcher[i].out[0];
+                
+                 for (var j = 0; j < MAX_CHUNK_SIZE - CHUNK_SIZE + 1; j++){
+                    getDiv[i].in[j] <== num2Bits[i].out[j + CHUNK_SIZE];
+                }
+                overflows[i] <== getDiv[i].out + signs[i] * (1 - isZero[i].out); 
+            } else {
+                out[i] <== overflows[i - 1] * (-2 * signs[i - 1] + 1);
+            }
+           
+        }
+    }
+    for (var i = CHUNK_NUMBER; i < MAX_CHUNK_NUMBER; i++){
+        if (i != MAX_CHUNK_NUMBER - 1){
+            signSwitchers[i] = Switcher();
+            modSwitcher[i] = Switcher();
+            zeroSwitcher[i] = Switcher();
+            isZero[i] = IsZero();
+            num2Bits[i] = Num2Bits(MAX_CHUNK_SIZE + 1); 
+            getMod[i] = Bits2Num(CHUNK_SIZE);
+            getDiv[i] = Bits2Num(MAX_CHUNK_SIZE - CHUNK_SIZE + 1);
+
+            signs[i] <-- is_negative_chunk(overflows[i - 1] * (- 2 * signs[i - 1] + 1), MAX_CHUNK_SIZE);
+            signs[i] * (1 - signs[i]) === 0;
+            
+            signSwitchers[i].bool <== signs[i];
+            signSwitchers[i].in[0] <== overflows[i - 1] * (- 2 * signs[i - 1] + 1);
+            signSwitchers[i].in[1] <==  -(overflows[i - 1] * (- 2 * signs[i - 1] + 1));
+            
+            num2Bits[i].in <== signSwitchers[i].out[0];
+            for (var j = 0; j < CHUNK_SIZE; j++){
+                getMod[i].in[j] <== num2Bits[i].out[j];
+            }
+            isZero[i].in <== getMod[i].out;
+            modSwitcher[i].in[0] <== getMod[i].out;
+            modSwitcher[i].in[1] <== 2 ** CHUNK_SIZE - getMod[i].out;
+            modSwitcher[i].bool <== signs[i];
+            
+            zeroSwitcher[i].bool <== isZero[i].out;
+            zeroSwitcher[i].in[0] <== modSwitcher[i].out[0];
+            zeroSwitcher[i].in[1] <== 0;
+            
+            out[i] <== zeroSwitcher[i].out[0];
+            
+            for (var j = 0; j < MAX_CHUNK_SIZE - CHUNK_SIZE + 1; j++){
+                getDiv[i].in[j] <== num2Bits[i].out[j + CHUNK_SIZE];
+            }
+            overflows[i] <== getDiv[i].out + signs[i] * (1 - isZero[i].out); 
+
+        } else {
+            out[i] <== overflows[i - 1] * (-2 * signs[i - 1] + 1);
         }
     }
 }
