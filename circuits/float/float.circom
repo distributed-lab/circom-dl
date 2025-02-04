@@ -22,118 +22,82 @@ template FloatMult(n){
     signal input in[2];
     signal output out;
     
-    component getLastNBits = GetLastNBits(n);
-    getLastNBits.in <== in[0] * in[1];
-    out <== getLastNBits.div;
+    component cutPrecision = CutPrecision(n, 2 * n);
+    cutPrecision.in <== in[0] * in[1];
+    out <== cutPrecision.out;
     
     // var print1 = log_float(in[0], n);
     // var print2 = log_float(in[1], n);
     // var print3 = log_float(out, n);
     // var print4 = log_float(in[1] * in[0], 2 * n);
-}
-
-// Multiplication of 2 floats with ceiling
-// Uses n*2 + 2 constraints (1 more than previous for ceiling)
-template FloatMultCeil(n){
-    signal input in[2];
-    signal output out;
-    
-    component getLastNBits = GetLastNBits(n);
-    getLastNBits.in <== in[0] * in[1];
-    out <== getLastNBits.div + getLastNBits.out[n - 1] * getLastNBits.out[n - 1];
-    
-    // var print1 = log_float(in[0], n);
-    // var print2 = log_float(in[1], n);
-    // var print3 = log_float(out, n);
-    // var print4 = log_float(in[1] * in[0], 2 * n);
-}
-
-template FloatToArray(n){
-    signal input in;
-    signal output out[2];
-    
-    component getLastNBits = GetLastNBits(n);
-    getLastNBits.in <== in;
-    out[0] <== getLastNBits.div;
-    component b2n = Bits2Num(n);
-    b2n.in <== getLastNBits.out;
-    out[1] <== b2n.out;
-    
-}
-
-template FloatMultArray(n){
-    signal input in1[2];
-    signal input in2[2];
-    
-    signal output out[2];
-    
-    signal mults[2];
-    mults[0] <== in1[0] * in2[1];
-    mults[1] <== in2[0] * in1[1];
-    
-    component bits2Num = Bits2Num(n);
-    component getLastNBits[2];
-    getLastNBits[0] = GetLastNBits(n);
-    getLastNBits[0].in <== mults[0] * 2 ** n + mults[1] * 2 ** n + in1[1] * in2[1];
-    
-    getLastNBits[1] = GetLastNBits(n);
-    getLastNBits[1].in <== getLastNBits[0].div;
-    
-    bits2Num.in <== getLastNBits[1].out;
-    
-    out[0] <== getLastNBits[1].div + in1[0] * in2[0];
-    out[1] <== bits2Num.out;
-    
 }
 
 // calculates inverse (1 / in) of float in
 template FloatInverse(n){
     signal input in;
     signal output out;
-    
-    out <-- 2 ** (2 * n) \ in;
-    
-    component floatToArrayIn = FloatToArray(n);
-    component floatToArrayOut = FloatToArray(n);
-    floatToArrayIn.in <== in;
-    floatToArrayOut.in <== out;
-    
-    component mults[3];
+    var absBitsOut[253] = abs_in_bits(2 ** (2 * n) % in);
+    var carry = 0;
+    for(var i = 48; i < 253; i++){
+        carry += absBitsOut[i];
+    }
+    out <-- 2 ** (2 * n) \ in + (carry != 0);
+
+    signal mults[3];
     
     // mults[0] - in * (out+1)
     // mults[1] - in * out
     // mults[2] - in * (out-1)
     for (var i = 0; i < 3; i++){
-        mults[i] = FloatMultArray(n);
-        mults[i].in1 <== floatToArrayIn.out;
-        mults[i].in2[0] <== floatToArrayOut.out[0];
-        mults[i].in2[1] <== floatToArrayOut.out[1] + 1 - i;
-    }
-    
-    component comparators[3];
-    component switcher[3];
-    
-    for (var i = 0; i < 3; i++){
-
-        comparators[i] = LessThan(n);
-        comparators[i].in[0] <== mults[i].out[0] * 2 ** n + mults[i].out[1];
-        comparators[i].in[1] <== 2 ** n;
-        
-        switcher[i] = Switcher();
-        switcher[i].bool <== comparators[i].out;
-        switcher[i].in[0] <== 2 ** n - mults[i].out[0] * 2 ** n - mults[i].out[1];
-        switcher[i].in[1] <== mults[i].out[0] * 2 ** n + mults[i].out[1] - 2 ** n;
+        mults[i] <== in * (out + 1 - i) - 2 ** (2 * n);
     }
 
-    component comparatorsResult[2];
+    var absBits1[253] = abs_in_bits(mults[0]);
+    
+    signal absInBits1[253];
+    component abs1 = Bits2Num(253);
+    for (var i = 0; i < 253; i++) {
+        absInBits1[i] <-- absBits1[i];
+        absInBits1[i] * (1 - absInBits1[i]) === 0;
+        abs1.in[i] <== absInBits1[i];
+    }
+    (abs1.out - mults[0]) * (abs1.out + mults[0]) === 0;
 
+    
+    var absBits2[253] = abs_in_bits(mults[1]);
+    
+    signal absInBits2[253];
+    component abs2 = Bits2Num(253);
+    for (var i = 0; i < 253; i++) {
+        absInBits2[i] <-- absBits2[i];
+        absInBits2[i] * (1 - absInBits2[i]) === 0;
+        abs2.in[i] <== absInBits2[i];
+    }
+    (abs2.out -  mults[1]) * (abs2.out + mults[1]) === 0;
+
+    var absBits3[253] = abs_in_bits(mults[2]);
+    
+    signal absInBits3[253];
+    component abs3 = Bits2Num(253);
+    for (var i = 0; i < 253; i++) {
+        absInBits3[i] <-- absBits3[i];
+        absInBits3[i] * (1 - absInBits3[i]) === 0;
+        abs3.in[i] <== absInBits3[i];
+    }
+    (abs3.out - mults[2]) * (abs3.out + mults[2]) === 0;
+
+    component comparators[2];
     for (var i = 0; i < 2; i++){
-        comparatorsResult[i] = LessEqThan(n);
-        comparatorsResult[i].in[0] <== switcher[1].out[1];
-        comparatorsResult[i].in[1] <== switcher[2 * i].out[1];
-
-        comparatorsResult[i].out === 1;
+        comparators[i] = LessEqThan(252 - n);
     }
+    comparators[0].in[0] <== abs2.out;
+    comparators[0].in[1] <== abs1.out;
+    comparators[0].out === 1;
+
+    comparators[1].in[0] <== abs2.out;
+    comparators[1].in[1] <== abs3.out;
+    comparators[1].out === 1;
+    
 }
 
 
@@ -153,46 +117,46 @@ template RemovePrecision(n1, n2){
             bits2Num.in[i] <== 0;
         }
         else {
-            bits2Num.in[i] <== num2Bits.out[(n2-n1) + i];
+            bits2Num.in[i] <== num2Bits.out[(n2 - n1) + i];
         }
     }
     out <== bits2Num.out;
 }
 
-template CutPrecisionNew(precNew, precOld) {
+template CutPrecision(precNew, precOld) {
     assert(precNew < precOld);
-
+    
     signal input in;
     signal output out;
-
+    
     var absBits[253] = abs_in_bits(in);
-
+    
     signal absInBits[253];
     component abs = Bits2Num(253);
     for (var i = 0; i < 253; i++) {
         absInBits[i] <-- absBits[i];
-        absInBits[i]*(1-absInBits[i]) === 0;
+        absInBits[i] * (1 - absInBits[i]) === 0;
         abs.in[i] <== absInBits[i];
     }
-    (abs.out - in)*(abs.out + in) === 0;
-
+    (abs.out - in) * (abs.out + in) === 0;
+    
     component sign = IsEqual();
     sign.in[0] <== abs.out;
     sign.in[1] <== in;
-
+    
     component bits2Num = Bits2Num(253);
     for (var i = 0; i < 253; i++) {
-        if (i > 252 - (precOld-precNew)) {
+        if (i > 252 - (precOld - precNew)) {
             bits2Num.in[i] <== 0;
         }
         else {
-            bits2Num.in[i] <== absInBits[(precOld-precNew) + i];
+            bits2Num.in[i] <== absInBits[(precOld - precNew) + i];
         }
     }
     component switcher = Switcher();
     switcher.bool <== 1 - sign.out;
     switcher.in[0] <== bits2Num.out * sign.out;
-    switcher.in[1] <== -bits2Num.out * (1 - sign.out);
+    switcher.in[1] <==  - bits2Num.out * (1 - sign.out);
     out <== switcher.out[0];
 }
 
@@ -208,7 +172,7 @@ template Exp(n){
     
     component mult[n \ 2 - 1];
     for (var i = 0; i < n \ 2 - 1; i++){
-        mult[i] = FloatMultCeil(n);
+        mult[i] = FloatMult(n);
         if (i == 0){
             mult[i].in[0] <== in;
             mult[i].in[1] <== in;
@@ -228,8 +192,8 @@ template Exp(n){
             sum.in[i] <== mult[i - 2].out * precompute[i];
         }
     }
-
-    component reduce = CutPrecisionNew(n, 2 * n);
+    
+    component reduce = CutPrecision(n, 2 * n);
     reduce.in <== sum.out;
     out <== reduce.out;
 }
@@ -238,11 +202,11 @@ template Exp(n){
 template FloatIsNegative(){
     signal input in;
     signal output out;
-
+    
     component num2Bits = Num2Bits(254);
-
+    
     num2Bits.in <== in;
-
+    
     out <== num2Bits.out[253];
-
-}   
+    
+}

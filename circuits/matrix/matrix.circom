@@ -216,7 +216,7 @@ template FloatMatrixCutPrecision(n1, m1, precOld, precNew) {
     signal output out[n1][m1];
     for(var i = 0; i < n1; i++) {
         for (var j = 0; j < m1; j++) {
-            remPrec[i][j] = CutPrecisionNew(precNew, precOld);
+            remPrec[i][j] = CutPrecision(precNew, precOld);
             remPrec[i][j].in <== in[i][j];
             out[i][j] <== remPrec[i][j].out;
         }

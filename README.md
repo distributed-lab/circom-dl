@@ -42,7 +42,7 @@ Currently, it supports:
 - *eth*. Impements exracting eth address from public key.
 - *float*. Implements fixed point float numbers.  Currently supports:
     - Multiplication (both with and without ceiling)
-    - Inverse 
+    - Inverse
     - Exp
     - Switch precision.
 
