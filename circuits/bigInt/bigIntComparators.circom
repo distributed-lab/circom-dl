@@ -196,7 +196,7 @@ template BigIntIsZeroModP(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NU
     for (var i = 0; i < CHUNK_NUMBER; i++){
         swicher[i] = Switcher();
         swicher[i].in[0] <== in[i];
-        swicher[i].in[1] <==  - in[i];
+        swicher[i].in[1] <== -in[i];
         swicher[i].bool <== sign;
         
         isZero.in[i] <== mult.out[i] - swicher[i].out[1];
