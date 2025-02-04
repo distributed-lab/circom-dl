@@ -3,6 +3,9 @@ pragma circom  2.1.6;
 include "../bitify/comparators.circom";
 include "../bitify/bitify.circom";
 include "../utils/switcher.circom";
+include "./bigIntFunc.circom";
+include "./bigIntOverflow.circom";
+include "./bigInt.circom";
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------
 // Comparators for big numbers
@@ -100,7 +103,7 @@ template BigGreaterEqThan(CHUNK_SIZE, CHUNK_NUMBER){
 // Works with overflowed signed chunks
 // Can check for 2 bigints equality if in is sub of each chunk of those numbers
 template BigIntIsZero(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER) {
-    assert(CHUNK_NUMBER >= 2);
+    assert(CHUNK_SIZE >= 2);
     
     var EPSILON = 3;
     
@@ -108,17 +111,20 @@ template BigIntIsZero(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER) {
     
     signal input in[CHUNK_NUMBER];
     
-    signal carry[CHUNK_NUMBER];
+    signal carry[CHUNK_NUMBER - 1];
+    component carryRangeChecks[CHUNK_SIZE];
     for (var i = 0; i < CHUNK_NUMBER - 1; i++){
+        carryRangeChecks[i] = Num2Bits(MAX_CHUNK_SIZE + EPSILON - CHUNK_SIZE);
         if (i == 0){
-            carry[i] <== in[i] / 2 ** CHUNK_SIZE;
+            carry[i] <== in[i] / (1 << CHUNK_SIZE);
         }
         else {
-            carry[i] <== (in[i] + carry[i - 1]) / 2 ** CHUNK_SIZE;
+            carry[i] <== (in[i] + carry[i - 1]) / (1 << CHUNK_SIZE);
         }
+        // checking carry is in the range of - 2^(m-n-1+eps), 2^(m+-n-1+eps)
+        carryRangeChecks[i].in <== carry[i] + (1 << (MAX_CHUNK_SIZE + EPSILON - CHUNK_SIZE - 1));
     }
-    component carryRangeCheck = Num2Bits(MAX_CHUNK_SIZE + EPSILON - CHUNK_SIZE);
-    carryRangeCheck.in <== carry[CHUNK_NUMBER - 2] + (1 << (MAX_CHUNK_SIZE + EPSILON - CHUNK_SIZE - 1));
+
     in[CHUNK_NUMBER - 1] + carry[CHUNK_NUMBER - 2] === 0;
 }
 
@@ -161,8 +167,8 @@ template BigIntIsZeroModP(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NU
     signal sign <-- reduced[199];
     sign * (1 - sign) === 0;
     signal k[CHUNK_NUMBER_DIV];
-
-
+    
+    
     // range checks
     // why explained above
     // TODO: research last chunk check, maybe less bits will be enough
@@ -172,7 +178,7 @@ template BigIntIsZeroModP(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NU
         kRangeChecks[i] = Num2Bits(CHUNK_SIZE);
         kRangeChecks[i].in <-- k[i];
     }
-
+    
     component mult;
     if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
         mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
@@ -185,14 +191,14 @@ template BigIntIsZeroModP(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NU
     }
     
     component swicher[CHUNK_NUMBER];
-
+    
     component isZero = BigIntIsZero(CHUNK_SIZE, MAX_CHUNK_SIZE, MAX_CHUNK_NUMBER);
     for (var i = 0; i < CHUNK_NUMBER; i++){
         swicher[i] = Switcher();
         swicher[i].in[0] <== in[i];
-        swicher[i].in[1] <== -in[i];
+        swicher[i].in[1] <==  - in[i];
         swicher[i].bool <== sign;
-
+        
         isZero.in[i] <== mult.out[i] - swicher[i].out[1];
     }
     for (var i = CHUNK_NUMBER; i < MAX_CHUNK_NUMBER; i++){

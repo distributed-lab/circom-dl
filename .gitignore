@@ -17,3 +17,8 @@ dstu
 .sym
 .r1cs
 ecrocover.py
+
+# For automatic expolits bruteforce
+test.circom
+exploits.js
+*.log
