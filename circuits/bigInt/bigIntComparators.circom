@@ -103,7 +103,7 @@ template BigGreaterEqThan(CHUNK_SIZE, CHUNK_NUMBER){
 // Works with overflowed signed chunks
 // Can check for 2 bigints equality if in is sub of each chunk of those numbers
 template BigIntIsZero(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER) {
-    assert(CHUNK_SIZE >= 2);
+    assert(CHUNK_NUMBER >= 2);
     
     var EPSILON = 3;
     
