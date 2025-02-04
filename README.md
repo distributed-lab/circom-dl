@@ -58,6 +58,11 @@ Currently, it supports:
 - *utils*. Some helper templates to make some base operations easier. Currently supports:
     - Switcher
 
+- *int*. Implements some int arithmetic for nums < underlying field(e.g. bn128). Currently supports:
+    - Inverse
+    - Log
+    - Sum of n elements
+    - Other templates can be unsecure, never use them in produnction!
 
 ## SETUP
 
