@@ -7,7 +7,7 @@ include "../utils/switcher.circom";
 
 // Calculates 2 numbers with CHUNK_NUMBER multiplication using karatsuba method
 // out is overflowed
-// use only for 2 ** k CHUNK_NUMBER, othewise u will get error
+// Use only for CHUNK_NUMBER in 2 ** k (powers of 2), othewise you will get error
 template KaratsubaOverflow(CHUNK_NUMBER) {
     signal input in[2][CHUNK_NUMBER];
     signal output out[2 * CHUNK_NUMBER];
@@ -124,12 +124,13 @@ template BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_
     }
 }
 
-// helper template, don`t use it outside of remove precision without knowing what are u doing!!!
+// Internal template. Don`t use it outside of remove overflow template
+// in <- chunk value, chunk sign
+// out -> chunk without overflow, overflow
 template ProcessChunk(CHUNK_SIZE, MAX_CHUNK_SIZE){
     // sign == 0 if positive else 1
     signal input sign; 
-    // chunk
-    signal input in;   
+    signal input in;
     signal output overflow;
     signal output out;
     
@@ -139,7 +140,8 @@ template ProcessChunk(CHUNK_SIZE, MAX_CHUNK_SIZE){
     component isZero;
     component zeroSwitcher;
     component modSwitcher;
-    
+
+    // Selects mod or 2 ** CHUNK_SIZE - mod (inverse mod)
     modSwitcher = Switcher();
     zeroSwitcher = Switcher();
     isZero = IsZero();
@@ -158,8 +160,12 @@ template ProcessChunk(CHUNK_SIZE, MAX_CHUNK_SIZE){
     modSwitcher.in[0] <== getMod.out;
     modSwitcher.in[1] <== 2 ** CHUNK_SIZE - getMod.out;
     modSwitcher.bool <== sign;
-    // for -7 % 4 mod is 1, not 3 cause -2 * 4 + 1 == -7, not -1 * 4 - 3 == -7 (mod >=0)
-    // so we make mod = modulus - mod and increase div by 1 (-1 obviously cause it is negative) if it`s non-zero
+    
+    // Handling negative numbers modulus
+    // Example: (-7 % 4) = 1 (div -2), while (7 % 4) = 3
+    //  correct:   -2 * 4 + 1 == -7
+    //  incorrect: -1 * 4 - 3 == -7 (mod >=0)
+    // We make mod = (modulus - mod) and increase div value by 1 in case mod != 0
     // If it is zero we do nothing
     zeroSwitcher.bool <== isZero.out;
     zeroSwitcher.in[0] <== modSwitcher.out[0];
@@ -171,15 +177,15 @@ template ProcessChunk(CHUNK_SIZE, MAX_CHUNK_SIZE){
         getDiv.in[j] <== num2Bits.out[j + CHUNK_SIZE];
     }
 
-    // +1 for negative non-zero modulus
+    // Add 1 for negative div with non-zero modulus
     overflow <== getDiv.out + sign * (1 - isZero.out); 
     
 }
 
-// remove precision from bigNum
-// input is CHUNK_NUMBER of chunks num with MAX_CHUNK_SIZE bits each (abs, they can be negative)
-// out is MAX_CHUNK_NUMBER of chunks with CHUNK_NUMBER each
-// if input is negative only last chunk of out will be negative
+// Removes overflow from BigNum
+//  input <- CHUNK_NUMBER of chunks with MAX_CHUNK_SIZE bits each (|input| < 2 ** MAX_CHUNK_SIZE)
+//  out -> MAX_CHUNK_NUMBER of chunks with CHUNK_SIZE each
+// If input is negative only last chunk of out will be negative
 template RemoveOverflow(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NUMBER){
     assert (CHUNK_NUMBER <= MAX_CHUNK_NUMBER);
     
@@ -196,7 +202,7 @@ template RemoveOverflow(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NUMB
             processChunk[i] = ProcessChunk(CHUNK_SIZE, MAX_CHUNK_SIZE);
         }
         if (i == 0){
-            // for first chunk in is first chunk
+            // For element of $in is first chunk
             signs[i] <-- is_negative_chunk(in[i], MAX_CHUNK_SIZE);
             signs[i] * (1 - signs[i]) === 0;
             
@@ -207,7 +213,7 @@ template RemoveOverflow(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NUMB
             overflows[i] <== processChunk[i].overflow;
         } else {
             if (i != MAX_CHUNK_NUMBER - 1){
-                // for non-first or last chunks in is chunk + previous chunk overflow
+                // For non-first or last chunks $in is chunk + previous chunk overflow
                 signs[i] <-- is_negative_chunk(in[i] + overflows[i - 1] * (-2 * signs[i - 1] + 1), MAX_CHUNK_SIZE);
                 signs[i] * (1 - signs[i]) === 0;
                 
@@ -217,7 +223,7 @@ template RemoveOverflow(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NUMB
                 out[i] <== processChunk[i].out;
                 overflows[i] <== processChunk[i].overflow;
             } else {
-                // for last chunk in case of same size of result and input we put chunk+previous overflow
+                // For the last chunk in case of same size of result and input: out = chunk + previous overflow
                 out[i] <== in[i] + overflows[i - 1] * (-2 * signs[i - 1] + 1);
             }
             
@@ -236,7 +242,7 @@ template RemoveOverflow(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NUMB
             overflows[i] <== processChunk[i].overflow;
             
         } else {
-            // for last chunk in case of different size of result and input we put previous overflow
+            // For the last chunk in case of different size of result and input we put previous overflow
             out[i] <== overflows[i - 1] * (- 2 * signs[i - 1] + 1);
         }
     }
