@@ -112,7 +112,7 @@ template BigIntIsZero(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER) {
     signal input in[CHUNK_NUMBER];
     
     signal carry[CHUNK_NUMBER - 1];
-    component carryRangeChecks[CHUNK_SIZE];
+    component carryRangeChecks[CHUNK_NUMBER - 1];
     for (var i = 0; i < CHUNK_NUMBER - 1; i++){
         carryRangeChecks[i] = Num2Bits(MAX_CHUNK_SIZE + EPSILON - CHUNK_SIZE);
         if (i == 0){
