@@ -136,8 +136,7 @@ template Log2Ceil(RANGE){
 // 11 * 2 + 0 = 22
 // we work in field => 22 = 22 % 17 = 5;
 // 5 === 5, pass will check
-// to avoid this, we should take next bit, and check full result
-// if any of bits was changed, it won`t pass
+// THIS IS UNSECURE VERSION, NEVER (NEVER!!!!!!!!!!!!!) USE IT IN PRODUCTION!!!!
 template GetLastBit(){
     signal input in;
     signal output bit;
@@ -158,6 +157,7 @@ template GetLastBit(){
 // computes last bit of num with any bit len for 2 constraints
 // returns bit (0 or 1) and div = num \ 2
 // HAS NO CHECK FOR CHANGING DIV = (p + in) / 2 FLOORED CHANGED!!!! (look explanation for previous template)
+// THIS IS UNSECURE VERSION, NEVER (NEVER!!!!!!!!!!!!!) USE IT IN PRODUCTION!!!!
 template GetLastBitUnsecure(){
     signal input in;
     signal output bit;
@@ -174,6 +174,7 @@ template GetLastBitUnsecure(){
 // returns array of bits and div
 // in fact, this is also just a div for (2 ** N)
 // for now, this is only one secured div that can be used
+// THIS IS UNSECURE VERSION, NEVER (NEVER!!!!!!!!!!!!!) USE IT IN PRODUCTION!!!!
 template GetLastNBits(N){
     assert (N >= 2);
     signal input in;
@@ -226,6 +227,7 @@ template GetSumOfNElements(N){
 
 // get absolute value of number
 // sign = 1 if +, 0 if -
+// THIS IS UNSECURE VERSION, NEVER (NEVER!!!!!!!!!!!!!) USE IT IN PRODUCTION!!!!
 template Abs(){
     signal input in;
     signal output sign;

@@ -9,7 +9,7 @@ function floatToNum(x, n){
 }
 
 function floatToNumCeil(x, n){
-    return (x * 2.0 ** n) % 1 < 0.5 ? BigInt((x * 2.0 ** n) - (x * 2.0 ** n % 1)) : BigInt((x * 2.0 ** n) - (x * 2.0 ** n % 1)) + 1n
+    return (x * 2.0 ** n) % 1 < 0.5 ? BigInt((x * 2.0 ** n) - (x * 2.0 ** n % 1)) : BigInt((x * 2.0 ** n) - (x * 2.0 ** n % 1))
 }
 
 async function testMult(input1, input2, circuit){
