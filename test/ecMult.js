@@ -4,6 +4,13 @@ const fs = require('fs');
 const Scalar = require("ffjavascript").Scalar;
 const wasm_tester = require("circom_tester").wasm;
 
+function random69BitNumber() {
+    const high = BigInt(Math.floor(Math.random() * (1 << 5))); 
+    const low = BigInt(Math.floor(Math.random() * (1 << 30))) << 30n; 
+    const mid = BigInt(Math.floor(Math.random() * (1 << 34))) << 60n;
+    return BigInt((mid | low | high) & ((1n << 69n) - 1n));
+}
+
 function bigintToArray(n, k, x) {
     let mod = BigInt(1);
     for (let idx = 0; idx < n; idx++) {
@@ -146,12 +153,32 @@ async function testScalarMult(input1, input2, input3, circuit){
 
 async function testScalarMultBrainpoolP256r1(input1, input2, input3, circuit){
     let input = [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)];
-
+    input3 = 1315735934464950278n * 1024n * 1024n * 1024n * 1024n * 1024n + 1n;
+    console.log(bigintToArray(64, 4, input3));
     let mult = point_scalar_mul(input1, input2, input3, 56698187605326110043627228396178346077120614539475214109386828188763884139993n, 76884956397045344220809746629001649093037950200943055203735601445031516197751n)
 
     let real_result = bigintToArray(64, 4, mult.x).concat(bigintToArray(64, 4, mult.y));
 
     const w = await circuit.calculateWitness({in: input, scalar: bigintToArray(64, 4, input3)}, true);
+
+    let circuit_result = w.slice(1, 1+8);
+
+    for (var i = 0; i < 8; i++){
+        assert(circuit_result[i] == real_result[i], `${input3} * (${input1}; ${input2})`);
+    }
+}
+
+async function testScalar69MultBrainpoolP256r1(input1, input2, circuit){
+    let input = [bigintToArray(64, 4, input1), bigintToArray(64, 4, input2)];
+
+    let input3 = random69BitNumber();
+    // let input3 = 1315735934464950278n;
+
+    let mult = point_scalar_mul(input1, input2, input3, 56698187605326110043627228396178346077120614539475214109386828188763884139993n, 76884956397045344220809746629001649093037950200943055203735601445031516197751n)
+
+    let real_result = bigintToArray(64, 4, mult.x).concat(bigintToArray(64, 4, mult.y));
+
+    const w = await circuit.calculateWitness({in: input, scalar: input3}, true);
 
     let circuit_result = w.slice(1, 1+8);
 
@@ -258,6 +285,21 @@ describe("BrainpoolP256r1 scalar point multiplication test", function () {
 
     it("115792089237316195417293883273301227131288926373708328631619254798622859984896 * (52575969560191351534542091466380106041028581718640875237441073011616025668110;24843789797109572893402439557748964186754677981311543350228155441542769376468)", async function () {
         await testScalarMultBrainpoolP256r1(52575969560191351534542091466380106041028581718640875237441073011616025668110n, 24843789797109572893402439557748964186754677981311543350228155441542769376468n,115792089237316195417293883273301227131288926373708328631619254798622859984896n, circuit);
+    });
+
+});
+
+describe("BrainpoolP256r1 69-scalar point multiplication test", function () {
+
+    this.timeout(10000000);
+    let circuit;
+
+    before(async () => {
+        circuit = await wasm_tester(path.join(__dirname, "circuits", "ec", "scalar69MultBrainpoolP256r1.circom"));
+    });
+
+    it("random69bits * (52575969560191351534542091466380106041028581718640875237441073011616025668110;24843789797109572893402439557748964186754677981311543350228155441542769376468)", async function () {
+        await testScalar69MultBrainpoolP256r1(52575969560191351534542091466380106041028581718640875237441073011616025668110n, 24843789797109572893402439557748964186754677981311543350228155441542769376468n, circuit);
     });
 
 });

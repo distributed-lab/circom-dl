@@ -21,15 +21,18 @@ template addZeroBabyjub(){
     signal input in2[2];
     signal output out[2];
     
+    // Check for point are zeroes
     component isZeroIn1 = IsZero();
     isZeroIn1.in <== in1[0];
     component isZeroIn2 = IsZero();
     isZeroIn2.in <== in2[0];
     
+    // sum of 2 points
     component adder = BabyjubjubAdd();
     adder.in1 <== in1;
     adder.in2 <== in2;
     
+    // 0 - point isn`t zero, 1 - point is Zero, left one - for left point, right - for right
     // 0 0 -> adders
     // 0 1 -> left
     // 1 0 -> right
@@ -78,14 +81,23 @@ template BabyjubjubAdd() {
     var a = 168700;
     var d = 168696;
     
+    // β = x1 * y2
     beta <== in1[0] * in2[1];
+
+    // Ɣ = x2 * y1
     gamma <== in1[1] * in2[0];
+
+    // δ = (y1 - x1 * a) * (x2 + y2)
     delta <== (in1[1] - a * in1[0]) * (in2[0] + in2[1]);
+
+    // τ = x1 * x2 * y1 * y2
     tau <== beta * gamma;
     
+    // (β + Ɣ) / (1 + d * τ)
     out[0] <-- (beta + gamma) / (1 + d * tau);
     (1 + d * tau) * out[0] === (beta + gamma);
     
+    // y3 = (δ + a * β - Ɣ) / (1 - d * τ)
     out[1] <-- (delta + a * beta - gamma) / (1 - d * tau);
     (1 - d * tau) * out[1] === (delta + a * beta - gamma);
 }
@@ -123,7 +135,8 @@ template BabyjubjubPointOnCurve() {
 
 // Scalar multiplication with base8 point
 // Same as convert private key to public key
-// don`t use 0 scalar, u will get [0,0], not error
+// Don`t use 0 scalar, u will get [0,0], not error
+// Double and add method for now
 // TODO: optimise - make it use less constraints because we know base8
 template BabyjubjubBase8Multiplication(){
     signal input scalar;
@@ -136,23 +149,19 @@ template BabyjubjubBase8Multiplication(){
     
     component adders[254];
     component doublers[253];
-    component isEqual[254];
     
     for (var i = 0; i < 254; i++){
-        isEqual[i] = IsEqual();
-        isEqual[i].in[0] <== num2Bits.out[253 - i];
-        isEqual[i].in[1] <== 1;
         adders[i] = addZeroBabyjub();
         if (i == 0){
             adders[i].in1 <== [0,0];
-            adders[i].in2[0] <== getBase8.base8[0] * isEqual[i].out;
-            adders[i].in2[1] <== getBase8.base8[1] * isEqual[i].out;
+            adders[i].in2[0] <== getBase8.base8[0] * num2Bits.out[253 - i];
+            adders[i].in2[1] <== getBase8.base8[1] * num2Bits.out[253 - i];
         } else {
             doublers[i - 1] = BabyjubjubDouble();
             doublers[i - 1].in <== adders[i - 1].out;
             adders[i].in1 <== doublers[i - 1].out;
-            adders[i].in2[0] <== getBase8.base8[0] * isEqual[i].out;
-            adders[i].in2[1] <== getBase8.base8[1] * isEqual[i].out;
+            adders[i].in2[0] <== getBase8.base8[0] * num2Bits.out[253 - i];
+            adders[i].in2[1] <== getBase8.base8[1] * num2Bits.out[253 - i];
         }
     }
     
@@ -161,36 +170,33 @@ template BabyjubjubBase8Multiplication(){
 
 // Scalar multiplication with any point
 // in is point to multiply, scalar is scalar to multiply
-// don`t use 0 scalar, u will get [0,0], not error
+// Don`t use 0 scalar, u will get [0,0], not error
+// Double and add method
 template BabyjubjubMultiplication(){
     signal input scalar;
     signal input in[2];
     
     signal output out[2];
     
-    
+    // Decompose scalar into bits
     component num2Bits = Num2Bits(254);
     num2Bits.in <== scalar;
     
     component adders[254];
     component doublers[253];
-    component isEqual[254];
     
     for (var i = 0; i < 254; i++){
-        isEqual[i] = IsEqual();
-        isEqual[i].in[0] <== num2Bits.out[253 - i];
-        isEqual[i].in[1] <== 1;
         adders[i] = addZeroBabyjub();
         if (i == 0){
             adders[i].in1 <== [0,0];
-            adders[i].in2[0] <== in[0] * isEqual[i].out;
-            adders[i].in2[1] <== in[1] * isEqual[i].out;
+            adders[i].in2[0] <== in[0] * num2Bits.out[253 - i];
+            adders[i].in2[1] <== in[1] * num2Bits.out[253 - i];
         } else {
             doublers[i - 1] = BabyjubjubDouble();
             doublers[i - 1].in <== adders[i - 1].out;
             adders[i].in1 <== doublers[i - 1].out;
-            adders[i].in2[0] <== in[0] * isEqual[i].out;
-            adders[i].in2[1] <== in[1] * isEqual[i].out;
+            adders[i].in2[0] <== in[0] * num2Bits.out[253 - i];
+            adders[i].in2[1] <== in[1] * num2Bits.out[253 - i];
         }
     }
     

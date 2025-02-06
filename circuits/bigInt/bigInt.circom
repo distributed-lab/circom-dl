@@ -48,6 +48,7 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     
     component num2bits[CHUNK_NUMBER_GREATER];
     
+    // sum of each chunks on the same position with overflow
     component bigAddOverflow = BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
     bigAddOverflow.in1 <== in1;
     bigAddOverflow.in2 <== in2;
@@ -55,7 +56,7 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
         num2bits[i] = Num2Bits(CHUNK_SIZE + 1);
         
-        //if >= 2**CHUNK_SIZE, overflow
+        //if >= 2**CHUNK_SIZE, overflow, left in this chunk mod 2 ** CHUNK_SIZE, and put div(0 or 1) to next one.
         if (i == 0){
             num2bits[i].in <== bigAddOverflow.out[i];
         } else {
@@ -71,6 +72,7 @@ template BigAdd(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
             out[i] <== bigAddOverflow.out[i] - (num2bits[i].out[CHUNK_SIZE]) * (2 ** CHUNK_SIZE) + num2bits[i - 1].out[CHUNK_SIZE];
         }
     }
+    // We can overflow only 1 in next chunk for sum of 2 non-overflowed  
     out[CHUNK_NUMBER_GREATER] <== num2bits[CHUNK_NUMBER_GREATER - 1].out[CHUNK_SIZE];
 }
 
@@ -82,6 +84,7 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     
     signal output out[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS];
     
+    // Mult with overflow with kartsuba or default poly mul (detects automatically)
     component bigMultOverflow = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
     bigMultOverflow.in1 <== in1;
     bigMultOverflow.in2 <== in2;
@@ -91,8 +94,8 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     component bits2numModulus[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
     //overflow = no carry (multiplication result / 2 ** chunk_size) === chunk_size first bits in result
     for (var i = 0; i < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1; i++){
-        //bigMultNoCarry = CHUNK_i * CHUNK_j (2 * CHUNK_SIZE) + CHUNK_i0 * CHUNK_j0 (2 * CHUNK_SIZE) + ..., up to len times,
-        // => 2 * CHUNK_SIZE + ADDITIONAL_LEN
+        //bigMultOverflow = CHUNK_i * CHUNK_j (2 * CHUNK_SIZE) + CHUNK_i0 * CHUNK_j0 (2 * CHUNK_SIZE) + ..., up to len times,
+        // => 2 * CHUNK_SIZE + ADDITIONAL_LEN 
         var ADDITIONAL_LEN = i;
         if (i >= CHUNK_NUMBER_LESS){
             ADDITIONAL_LEN = CHUNK_NUMBER_LESS - 1;
@@ -100,7 +103,6 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
         if (i >= CHUNK_NUMBER_GREATER){
             ADDITIONAL_LEN = CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1 - i;
         }
-        
         
         num2bits[i] = Num2Bits(CHUNK_SIZE * 2 + ADDITIONAL_LEN);
         
@@ -110,11 +112,13 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
             num2bits[i].in <== bigMultOverflow.out[i] + bits2numOverflow[i - 1].out;
         }
         
+        // Overflow is div by 2 ** CHUNK_SIZE (all except CHUNK_SIZE lesser bits)
         bits2numOverflow[i] = Bits2Num(CHUNK_SIZE + ADDITIONAL_LEN);
         for (var j = 0; j < CHUNK_SIZE + ADDITIONAL_LEN; j++){
             bits2numOverflow[i].in[j] <== num2bits[i].out[CHUNK_SIZE + j];
         }
         
+        // Overflow is mod by 2 ** CHUNK_SIZE (CHUNK_SIZE lesser bits)
         bits2numModulus[i] = Bits2Num(CHUNK_SIZE);
         for (var j = 0; j < CHUNK_SIZE; j++){
             bits2numModulus[i].in[j] <== num2bits[i].out[j];
@@ -122,8 +126,10 @@ template BigMult(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     }
     for (var i = 0; i < CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS; i++){
         if (i == CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1){
+            // last chunk is overflow of previous
             out[i] <== bits2numOverflow[i - 1].out;
         } else {
+            // any other chunk is mod of it`s chunk counting overflow of revious
             out[i] <== bits2numModulus[i].out;
         }
     }
@@ -144,7 +150,7 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     signal output div[CHUNK_NUMBER_DIV];
     signal output mod[CHUNK_NUMBER_MODULUS];
     
-    
+    // uncostrainted calculation of mod and div
     var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV - 1, base, modulus);
     
     for (var i = 0; i < CHUNK_NUMBER_DIV; i++){
@@ -160,6 +166,7 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
         
     }
     
+    // Check to avoid mod >= modulus
     component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER_MODULUS);
     
     greaterThan.in[0] <== modulus;
@@ -168,6 +175,9 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
     
     component mult;
     
+    // We need to check div * modulus + mod === in
+    // To perform nultiplication we need to mult num witn more chunks with num with less chunks
+    // So we do this if, cause we know chunk numbers at compilation moment
     if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
         mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
         mult.in1 <== div;
@@ -182,6 +192,7 @@ template BigMod(CHUNK_SIZE, CHUNK_NUMBER_BASE, CHUNK_NUMBER_MODULUS){
         mult.out[i] === 0;
     }
     
+    // in - (div * modulus + mod) === 0
     component checkCarry = BigIntIsZero(CHUNK_SIZE, CHUNK_SIZE * 2 + log_ceil(CHUNK_NUMBER_MODULUS + CHUNK_NUMBER_DIV - 1), CHUNK_NUMBER_BASE);
     for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++) {
         checkCarry.in[i] <== base[i] - mult.out[i] - mod[i];
@@ -204,10 +215,12 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
     signal output div[CHUNK_NUMBER_DIV];
     signal output mod[CHUNK_NUMBER_MODULUS];
     
+    // get overfloved mult result
     component mult = BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS);
     mult.in1 <== in1;
     mult.in2 <== in2;
 
+    // unconstrainted calculation of div and mod
     var reduced[200] = reduce_overflow(CHUNK_SIZE, CHUNK_NUMBER_BASE - 1, CHUNK_NUMBER_BASE, mult.out);
     var long_division[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV - 1, reduced, modulus);
     
@@ -224,6 +237,7 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
 
     }
     
+    // To avoid mod >= modulus
     component greaterThan = BigGreaterThan(CHUNK_SIZE, CHUNK_NUMBER_MODULUS);
     
     greaterThan.in[0] <== modulus;
@@ -231,6 +245,10 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
     greaterThan.out === 1;
     
     component mult2;
+
+    // We need to check div * modulus + mod === in1 * in2
+    // To perform nultiplication we need to mult num witn more chunks with num with less chunks
+    // So we do this if, cause we know chunk numbers at compilation moment
     if (CHUNK_NUMBER_DIV >= CHUNK_NUMBER_MODULUS){
         mult2 = BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_DIV, CHUNK_NUMBER_MODULUS);
         
@@ -242,7 +260,8 @@ template BigMultModP(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS, CHUNK_
         mult2.in2 <== div;
         mult2.in1 <== modulus;
     }
-    
+
+    // in1 * in2 - (div * modulus + mod) === 0
     component isZero = BigIntIsZero(CHUNK_SIZE, CHUNK_SIZE * 2 + log_ceil(CHUNK_NUMBER_MODULUS + CHUNK_NUMBER_DIV - 1), CHUNK_NUMBER_BASE - 1);
     for (var i = 0; i < CHUNK_NUMBER_MODULUS; i++) {
         isZero.in[i] <== mult.out[i] - mult2.out[i] - mod[i];
@@ -268,6 +287,10 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
     
     signal output out[CHUNK_NUMBER];
     
+    // exp is known on compilaction, so we can do secure operations with it without constraints.
+    // exp_process[0] is greatest "1" bit index (max pover of base we need)
+    // exp_process[1] is num of all "1" bit in exp (to get nums of extra muls we need)
+    // exp_process[2:256] are 254 bits of exp 
     var exp_process[256] = exp_to_bits(EXP);
     
     component muls[exp_process[0]];
@@ -283,6 +306,7 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
         resultMuls[i].modulus <== modulus;
     }
 
+    // Here we calculate base ** (2**0), base ** (2**1), base ** (2 ** 2), ... ,base ** (2** greatest "1" bit index) 
     muls[0].in1 <== base;
     muls[0].in2 <== base;
     
@@ -291,6 +315,7 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
         muls[i].in2 <== muls[i - 1].mod;
     }
     
+    // Here we mult res(base ** (2 ** greatest bit index)) by (base ** (2 ** all other indexes of "1"))
     for (var i = 0; i < exp_process[1] - 1; i++){
         if (i == 0){
             if (exp_process[i + 2] == 0){
@@ -306,6 +331,7 @@ template PowerMod(CHUNK_SIZE, CHUNK_NUMBER, EXP) {
         }
     }
 
+    // if we have only one "1" bit return before previous loop, else return res of loop
     if (exp_process[1] == 1){
         out <== muls[exp_process[0] - 1].mod;
     } else {
@@ -321,19 +347,19 @@ template BigModInv(CHUNK_SIZE, CHUNK_NUMBER) {
     signal input modulus[CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
     
-    
-    
-    
+    // calculate inverse unconstrainted
     var inv[200] = mod_inv(CHUNK_SIZE, CHUNK_NUMBER, in, modulus);
     for (var i = 0; i < CHUNK_NUMBER; i++) {
         out[i] <-- inv[i];
     }
     
+    // mult in * out % p
     component mult = BigMultModP(CHUNK_SIZE, CHUNK_NUMBER, CHUNK_NUMBER, CHUNK_NUMBER);
     mult.in1 <== in;
     mult.in2 <== out;
     mult.modulus <== modulus;
     
+    // check that in * out % p == 1;
     mult.mod[0] === 1;
     for (var i = 1; i < CHUNK_NUMBER; i++) {
         mult.mod[i] === 0;
@@ -346,17 +372,21 @@ template BigSub(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in[2][CHUNK_NUMBER];
     signal output out[CHUNK_NUMBER];
     
-
-    
     component lessThan[CHUNK_NUMBER];
     for (var i = 0; i < CHUNK_NUMBER; i++){
         lessThan[i] = LessThan(CHUNK_SIZE + 1);
         lessThan[i].in[1] <== 2 ** CHUNK_SIZE;
         
         if (i == 0){
+            // Check that chunk_diff >= 0
+            // If so, remins difference
+            // Else we add 2 ** CHUNK_SIZE and reduce next chunk by 1 
             lessThan[i].in[0] <== in[0][i] - in[1][i] + 2 ** CHUNK_SIZE;
             out[i] <== in[0][i] - in[1][i] + (2 ** CHUNK_SIZE) * (lessThan[i].out);
         } else {
+            // Check that chunk_diff after previous potential carry >= 0
+            // If so, remins difference
+            // Else we add 2 ** CHUNK_SIZE and reduce next chunk by 1 
             lessThan[i].in[0] <== in[0][i] - in[1][i] - lessThan[i - 1].out + 2 ** CHUNK_SIZE;
             out[i] <== in[0][i] - in[1][i] + (2 ** CHUNK_SIZE) * (lessThan[i].out) - lessThan[i - 1].out;
         }

@@ -112,7 +112,7 @@ template PointOnTangent(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     bigAdd.in1 <== scalarMult.out;
     bigAdd.in2 <== A;
     
-    component bigSub = BigSubModP(CHUNK_SIZE, CHUNK_NUMBER);
+    component bigSub = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     bigSub.in1 <== in1[0];
     bigSub.in2 <== in2[0];
     bigSub.modulus <== P;
@@ -160,17 +160,17 @@ template PointOnLine(CHUNK_SIZE, CHUNK_NUMBER, A, B, P) {
     bigAdd.in1 <== in1[1];
     bigAdd.in2 <== in3[1];
     
-    component bigSub = BigSubModP(CHUNK_SIZE, CHUNK_NUMBER);
+    component bigSub = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     bigSub.in1 <== in2[0];
     bigSub.in2 <== in1[0];
     bigSub.modulus <== P;
     
-    component bigSub2 = BigSubModP(CHUNK_SIZE, CHUNK_NUMBER);
+    component bigSub2 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     bigSub2.in1 <== in2[1];
     bigSub2.in2 <== in1[1];
     bigSub2.modulus <== P;
     
-    component bigSub3 = BigSubModP(CHUNK_SIZE, CHUNK_NUMBER);
+    component bigSub3 = BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER);
     bigSub3.in1 <== in1[0];
     bigSub3.in2 <== in3[0];
     bigSub3.modulus <== P;
@@ -197,6 +197,7 @@ template PointOnLine(CHUNK_SIZE, CHUNK_NUMBER, A, B, P) {
 template EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE){
     signal input in[2][CHUNK_NUMBER];
         
+    assert(WINDOW_SIZE == 3 || WINDOW_SIZE == 4);
     var PRECOMPUTE_NUMBER = 2 ** WINDOW_SIZE;
     
     signal output out[PRECOMPUTE_NUMBER][2][CHUNK_NUMBER];
@@ -311,6 +312,7 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
 // for 256 curve best WINDOW_SIZE = 4 with 252 + 63 + 14 = 329 operations with points
 template EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE){
     
+    assert (WINDOW_SIZE == 4);
     signal input in[2][CHUNK_NUMBER];
     signal input scalar[CHUNK_NUMBER];
         
@@ -462,6 +464,164 @@ template EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE)
         }
     }
     out <== resultingPoints[ADDERS_NUMBER];
+}
+
+// Scalar mult for one chunked scalar with window size == 3
+// Use with 69 bit scalars
+// We use it for mult point to blinding factor with 69 bits security
+template EllipticCurveIntScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, BIT_LEN){
+    
+    var WINDOW_SIZE = 3;
+    assert(BIT_LEN == 69);
+    signal input in[2][CHUNK_NUMBER];
+    signal input scalar;
+
+    signal output out[2][CHUNK_NUMBER];
+
+    component precompute = EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE);
+    precompute.in <== in;
+
+
+    var PRECOMPUTE_NUMBER = 2 ** WINDOW_SIZE;
+    var DOUBLERS_NUMBER = BIT_LEN - WINDOW_SIZE;
+    var ADDERS_NUMBER = BIT_LEN \ WINDOW_SIZE;
+    
+    
+    component doublers[DOUBLERS_NUMBER];
+    component adders  [ADDERS_NUMBER - 1];
+    component bits2Num[ADDERS_NUMBER];
+    component num2Bits = Num2Bits(BIT_LEN);
+    
+    component getDummy = EllipticCurveGetDummy(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+    
+    signal scalarBits[BIT_LEN];
+    
+    num2Bits.in <== scalar;
+    for (var i = 0; i < BIT_LEN; i++){
+        scalarBits[i] <== num2Bits.out[BIT_LEN - 1 - i];
+    }
+    
+    signal resultingPoints[ADDERS_NUMBER + 1][2][CHUNK_NUMBER];
+    signal additionPoints[ADDERS_NUMBER][2][CHUNK_NUMBER];
+    
+    
+    component isZeroResult[ADDERS_NUMBER];
+    component isZeroAddition[ADDERS_NUMBER];
+    
+    component partsEqual[ADDERS_NUMBER][PRECOMPUTE_NUMBER];
+    component getSum[ADDERS_NUMBER][2][CHUNK_NUMBER];
+    
+    
+    component doubleSwitcher[DOUBLERS_NUMBER][2][CHUNK_NUMBER];
+    
+    component resultSwitcherAddition[DOUBLERS_NUMBER][2][CHUNK_NUMBER];
+    component resultSwitcherDoubling[DOUBLERS_NUMBER][2][CHUNK_NUMBER];
+    
+    resultingPoints[0] <== precompute.out[0];
+    
+    for (var i = 0; i < BIT_LEN; i += WINDOW_SIZE){
+        bits2Num[i \ WINDOW_SIZE] = Bits2Num(WINDOW_SIZE);
+        for (var j = 0; j < WINDOW_SIZE; j++){
+            bits2Num[i \ WINDOW_SIZE].in[j] <== scalarBits[i + (WINDOW_SIZE - 1) - j];
+        }
+        
+        isZeroResult[i \ WINDOW_SIZE] = IsEqual();
+        isZeroResult[i \ WINDOW_SIZE].in[0] <== resultingPoints[i \ WINDOW_SIZE][0][0];
+        isZeroResult[i \ WINDOW_SIZE].in[1] <== getDummy.dummyPoint[0][0];
+        
+        if (i != 0){
+            for (var j = 0; j < WINDOW_SIZE; j++){
+                doublers[i + j - WINDOW_SIZE] = EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+                
+                // if input == 0, double gen, result - zero
+                // if input != 0, double res window times, result - doubling result
+                if (j == 0){
+                    for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+                        for (var coor_idx = 0; coor_idx < CHUNK_NUMBER; coor_idx++){
+                            
+                            doubleSwitcher[i \ WINDOW_SIZE - 1][axis_idx][coor_idx] = Switcher();
+                            doubleSwitcher[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].bool <== isZeroResult[i \ WINDOW_SIZE].out;
+                            doubleSwitcher[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].in[0] <== getDummy.dummyPoint[axis_idx][coor_idx];
+                            doubleSwitcher[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].in[1] <== resultingPoints[i \ WINDOW_SIZE][axis_idx][coor_idx];
+                            
+                            doublers[i + j - WINDOW_SIZE].in[axis_idx][coor_idx] <== doubleSwitcher[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].out[1];
+                        }
+                    }
+                }
+                else {
+                    doublers[i + j - WINDOW_SIZE].in <== doublers[i + j - 1 - WINDOW_SIZE].out;
+                }
+            }
+        }
+        
+        // Setting components
+        for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+            for (var coor_idx = 0; coor_idx < CHUNK_NUMBER; coor_idx++){
+                getSum[i \ WINDOW_SIZE][axis_idx][coor_idx] = GetSumOfNElements(PRECOMPUTE_NUMBER);
+            }
+        }
+        
+        // Each sum is sum of all precomputed coordinates * isEqual result (0 + 0 + 1 * coordinate[][] + .. + 0)
+        for (var point_idx = 0; point_idx < PRECOMPUTE_NUMBER; point_idx++){
+            partsEqual[i \ WINDOW_SIZE][point_idx] = IsEqual();
+            partsEqual[i \ WINDOW_SIZE][point_idx].in[0] <== point_idx;
+            partsEqual[i \ WINDOW_SIZE][point_idx].in[1] <== bits2Num[i \ WINDOW_SIZE].out;
+            for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+                for (var coor_idx = 0; coor_idx < CHUNK_NUMBER; coor_idx++){
+                    getSum[i \ WINDOW_SIZE][axis_idx][coor_idx].in[point_idx] <== partsEqual[i \ WINDOW_SIZE][point_idx].out * precompute.out[point_idx][axis_idx][coor_idx];
+                }
+            }
+        }
+        
+        // Setting results in point
+        for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+            for (var coor_idx = 0; coor_idx < CHUNK_NUMBER; coor_idx++){
+                additionPoints[i \ WINDOW_SIZE][axis_idx][coor_idx] <== getSum[i \ WINDOW_SIZE][axis_idx][coor_idx].out;
+            }
+        }
+        
+        if (i == 0){
+            
+            resultingPoints[i \ WINDOW_SIZE + 1] <== additionPoints[i \ WINDOW_SIZE];
+            
+        } else {
+            
+            adders[i \ WINDOW_SIZE - 1] = EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P);
+            
+            adders[i \ WINDOW_SIZE - 1].in1 <== doublers[i - 1].out;
+            adders[i \ WINDOW_SIZE - 1].in2 <== additionPoints[i \ WINDOW_SIZE];
+            
+            isZeroAddition[i \ WINDOW_SIZE] = IsEqual();
+            isZeroAddition[i \ WINDOW_SIZE].in[0] <== additionPoints[i \ WINDOW_SIZE][0][0];
+            isZeroAddition[i \ WINDOW_SIZE].in[1] <== getDummy.dummyPoint[0][0];
+            
+            // isZeroAddition / isZeroResult
+            // 0 0 -> adders Result
+            // 0 1 -> additionPoints
+            // 1 0 -> doubling result
+            // 1 1 -> 0
+            
+            for (var axis_idx = 0; axis_idx < 2; axis_idx++){
+                for (var coor_idx = 0; coor_idx < CHUNK_NUMBER; coor_idx++){
+                    resultSwitcherAddition[i \ WINDOW_SIZE - 1][axis_idx][coor_idx] = Switcher();
+                    resultSwitcherDoubling[i \ WINDOW_SIZE - 1][axis_idx][coor_idx] = Switcher();
+                    
+                    resultSwitcherAddition[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].bool <== isZeroAddition[i \ WINDOW_SIZE].out;
+                    resultSwitcherAddition[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].in[0] <== adders[i \ WINDOW_SIZE - 1].out[axis_idx][coor_idx];
+                    resultSwitcherAddition[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].in[1] <== doublers[i - 1].out[axis_idx][coor_idx];
+                    
+                    resultSwitcherDoubling[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].bool <== isZeroResult[i \ WINDOW_SIZE].out;
+                    resultSwitcherDoubling[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].in[0] <== additionPoints[i \ WINDOW_SIZE][axis_idx][coor_idx];
+                    resultSwitcherDoubling[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].in[1] <== resultSwitcherAddition[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].out[0];
+                    
+                    resultingPoints[i \ WINDOW_SIZE + 1][axis_idx][coor_idx] <== resultSwitcherDoubling[i \ WINDOW_SIZE - 1][axis_idx][coor_idx].out[1];
+                }
+            }
+
+        }
+    }
+    out <== resultingPoints[ADDERS_NUMBER];
+    
 }
 
 // calculate G * scalar

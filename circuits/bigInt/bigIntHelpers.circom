@@ -12,7 +12,6 @@ template KaratsubaOverflow(CHUNK_NUMBER) {
     signal input in[2][CHUNK_NUMBER];
     signal output out[2 * CHUNK_NUMBER];
     
-    
     if (CHUNK_NUMBER == 1) {
         out[0] <== in[0][0] * in[1][0];
     } else {

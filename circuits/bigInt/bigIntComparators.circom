@@ -130,7 +130,7 @@ template BigIntIsZero(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER) {
 
 // checks for in % p == 0
 // Works with overflowed signed chunks
-// To handle megative values we use sign
+// To handle negative values we use sign
 // Sign is var and can be changed, but it should be a problem
 // Sign change means that we can calculate for -in instead of in, 
 // But if in % p == 0 means that -in % p == 0 too, so no exploit here
@@ -151,7 +151,7 @@ template BigIntIsZero(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER) {
 // We will pass this check
 // Idea is that overflow can help to exploit and make p * k == in - (m * F) % p,
 // where m is const.
-// put problem is that  F is prime, so we can gety any value here
+// but problem is that F is prime, so we can gety any value here
 // This can lead to some exploits, so we add some range checks
 // Maybe (I`m not sure!) this is discrete logarithm problem
 // But while this isn`t analysed deeply, checks remains.
@@ -162,6 +162,8 @@ template BigIntIsZeroModP(CHUNK_SIZE, MAX_CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NU
     
     var CHUNK_NUMBER_DIV = MAX_CHUNK_NUMBER - CHUNK_NUMBER_MODULUS + 1;
     
+    // unconstrained calculation of div, mod and sign
+    // sign is last element of reducing.
     var reduced[200] = reduce_overflow_signed(CHUNK_SIZE, CHUNK_NUMBER, MAX_CHUNK_NUMBER, MAX_CHUNK_SIZE, in);
     var div_result[2][200] = long_div(CHUNK_SIZE, CHUNK_NUMBER_MODULUS, CHUNK_NUMBER_DIV - 1, reduced, modulus);
     signal sign <-- reduced[199];
@@ -220,8 +222,11 @@ template BigIsEqual(CHUNK_SIZE, CHUNK_NUMBER) {
     
     for (var i = 0; i < CHUNK_NUMBER; i++){
         isEqual[i] = IsEqual();
+        // Force equal each chunk
         isEqual[i].in[0] <== in[0][i];
         isEqual[i].in[1] <== in[1][i];
+
+        // Agregate results
         if (i == 0){
             equalResults[i] <== isEqual[i].out;
         } else {

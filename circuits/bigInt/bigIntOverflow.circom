@@ -34,12 +34,13 @@ template BigAddOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     }
 }
 
+// calculate overflowed mod result with karatsuba method or default poly mult (detects automatically)
 template BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
     signal input in1[CHUNK_NUMBER_GREATER];
     signal input in2[CHUNK_NUMBER_LESS];
     signal output out[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1];
     
-
+    // to detect if karatsuba is optimal
     var isPowerOfTwo = 0;
     for (var i = 0; i < CHUNK_NUMBER_GREATER; i++){
         if (CHUNK_NUMBER_GREATER == 2 ** i){
@@ -71,6 +72,7 @@ template BigMultOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_LESS){
 }
 
 // computes modulus + in1 - in2 (WITHOUT % modulus!!!) with overflows, in1 and in2 shouldn`t have overflows and in1 < modulus, in2 < modulus!
+// Purpose is to don`t let then number became negative, this isn`t supported by some templates
 // use only if you undestand what are you doing!!!
 // Use case if (a * b - c) % p, here u can use (a * b + (p + p - c) % p)
 template BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER){
@@ -78,11 +80,10 @@ template BigSubModOverflow(CHUNK_SIZE, CHUNK_NUMBER){
     signal input in2[CHUNK_NUMBER];
     signal input modulus[CHUNK_NUMBER];
     
-
-    
-
     signal output out[CHUNK_NUMBER];
 
+    // To avoid negative we add 2 ** chunk_number to all chunk except last and all non-first chunk by 1
+    // To avoid negativ att last chunks we add P (modulus), which should have non-zero greatest chunk
     for (var i = 0; i < CHUNK_NUMBER; i++){
         if (i == 0){
             out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i];
@@ -108,27 +109,3 @@ template ScalarMultOverflow(CHUNK_NUMBER){
     }
 }
 
-// computes modulus + in1 - in2 (WITHOUT % modulus!!!) with overflows, in1 and in2 shouldn`t have overflows and in1 < modulus, in2 < modulus!
-// use only if you undestand what are you doing!!!
-template BigSubModP(CHUNK_SIZE, CHUNK_NUMBER){
-    signal input in1[CHUNK_NUMBER];
-    signal input in2[CHUNK_NUMBER];
-    signal input modulus[CHUNK_NUMBER];
-    
-
-    
-
-    signal output out[CHUNK_NUMBER];
-
-    for (var i = 0; i < CHUNK_NUMBER; i++){
-        if (i == 0){
-            out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i];
-        } else {
-            if (i == CHUNK_NUMBER - 1){
-                out[i] <== modulus[i] + in1[i] - in2[i] - 1;
-            } else {
-                out[i] <== 2 ** CHUNK_SIZE + modulus[i] + in1[i] - in2[i] - 1;
-            }
-        }
-    }
-}
