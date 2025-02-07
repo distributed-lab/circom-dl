@@ -11,6 +11,7 @@ include "./sha2/sha384/sha384HashBits.circom";
 include "./sha2/sha512/sha512HashBits.circom";
 include "./sha3/keccak/keccak.circom";
 include "./poseidon/poseidon.circom";
+include "./poseidon2/poseidon2Sponge.circom";
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Here is secure implementation of sha-1 and sha-2 hash algoritms.
@@ -126,4 +127,19 @@ template PoseidonHash(LEN){
     component poseidon = Poseidon(LEN);
     poseidon.in <== in;
     out <== poseidon.out;
+}
+
+//------------------------------------------------------------------------------
+// Hash `n` field elements into 1, with approximately 254 bits of preimage security (?)
+// (assuming bn128 scalar field. We use CAPACITY=2, RATE=1, T=3).
+
+template Poseidon2Hash(LEN) {
+    assert (LEN <= 16);
+    assert (LEN > 0);
+    signal input  in[LEN];
+    signal output out;
+    
+    component sponge = PoseidonSponge(3,2,LEN,1);
+    sponge.in <== in;
+    sponge.out[0] ==> out;
 }

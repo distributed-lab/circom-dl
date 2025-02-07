@@ -277,6 +277,20 @@ async function testPoseidon(input1, circuit){
     }
 }
 
+async function testPoseidon2(input1, circuit){
+
+    const hash_0 = 10421270574331324177348727421681713543544081230097403733504870033499419662089n
+    const hash_0_1 = 7183107020816892313686593723691816772071214792418963000461816466850207027822n
+
+    const w = await circuit.calculateWitness({in: input1}, true);
+    let circuit_result = w.slice(1, 1+1)
+    if (input1[0] == 0n && input1[1] == 1n){
+        assert(circuit_result == hash_0_1, `${hash_0_1} != ${circuit_result}`);
+    } else {
+        assert(circuit_result == hash_0, `${hash_0} != ${circuit_result}`);
+    }
+}
+
 async function testKeccak256(input1, circuit){
 
     const input = hexToBitArray(input1)
@@ -438,11 +452,11 @@ describe("Poseidon test", function () {
     let circuit2;
 
     before(async () => {
-        circuit1 = await wasm_tester(path.join(__dirname, "circuits", "hasher", "poseidon1.circom"));
+        circuit1 = await wasm_tester(path.join(__dirname, "circuits", "hasher", "poseidon1-1.circom"));
     });
 
     before(async () => {
-        circuit2 = await wasm_tester(path.join(__dirname, "circuits", "hasher", "poseidon2.circom"));
+        circuit2 = await wasm_tester(path.join(__dirname, "circuits", "hasher", "poseidon1-2.circom"));
     });
 
     it("Poseidon([0])", async function () {
@@ -455,3 +469,26 @@ describe("Poseidon test", function () {
 
 });
 
+describe("Poseidon2 test", function () {
+
+    this.timeout(10000000);
+    let circuit1;
+    let circuit2;
+
+    before(async () => {
+        circuit1 = await wasm_tester(path.join(__dirname, "circuits", "hasher", "poseidon2-1.circom"));
+    });
+
+    before(async () => {
+        circuit2 = await wasm_tester(path.join(__dirname, "circuits", "hasher", "poseidon2-2.circom"));
+    });
+
+    it("Poseidon2([0])", async function () {
+        await testPoseidon2([0n], circuit1);
+    });
+
+    it("Poseidon2([0, 1])", async function () {
+        await testPoseidon2([0n, 1n], circuit2);
+    })
+
+});
