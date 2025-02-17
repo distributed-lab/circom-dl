@@ -467,12 +467,10 @@ template EllipticCurveScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WINDOW_SIZE)
 }
 
 // Scalar mult for one chunked scalar with window size == 3
-// Use with 69 bit scalars
+// Use with <=254 bit scalars
 // We use it for mult point to blinding factor with 69 bits security
-template EllipticCurveIntScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, BIT_LEN){
-    
-    var WINDOW_SIZE = 3;
-    assert(BIT_LEN == 69);
+template EllipticCurveIntScalarMult(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, BIT_LEN, WINDOW_SIZE){
+
     signal input in[2][CHUNK_NUMBER];
     signal input scalar;
 

@@ -81,9 +81,9 @@ template BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_
     // result[idx].length = count(i+j === idx)
     // result[0].length = 1 (i = 0; j = 0)
     // result[1].length = 2 (i = 1; j = 0; i = 0; j = 1);
-    // result[i].length = { result[i-1].length + 1,  i <= CHUNK_NUMBER_LESS}
-    //                    {  result[i-1].length - 1,  i > CHUNK_NUMBER_GREATER}
-    //                    {  result[i-1].length,      CHUNK_NUMBER_LESS < i <= CHUNK_NUMBER_GREATER}
+// result[i].length = { result[i-1].length + 1,  i <= CHUNK_NUMBER_LESS}
+//                    {  result[i-1].length - 1,  i > CHUNK_NUMBER_GREATER}
+//                    {  result[i-1].length,      CHUNK_NUMBER_LESS < i <= CHUNK_NUMBER_GREATER}
     
     signal tmpResult[CHUNK_NUMBER_GREATER + CHUNK_NUMBER_LESS - 1][CHUNK_NUMBER_LESS];
     
@@ -128,7 +128,7 @@ template BigMultNonEqualOverflow(CHUNK_SIZE, CHUNK_NUMBER_GREATER, CHUNK_NUMBER_
 // out -> chunk without overflow, overflow
 template ProcessChunk(CHUNK_SIZE, MAX_CHUNK_SIZE){
     // sign == 0 if positive else 1
-    signal input sign; 
+    signal input sign;
     signal input in;
     signal output overflow;
     signal output out;
@@ -139,7 +139,7 @@ template ProcessChunk(CHUNK_SIZE, MAX_CHUNK_SIZE){
     component isZero;
     component zeroSwitcher;
     component modSwitcher;
-
+    
     // Selects mod or 2 ** CHUNK_SIZE - mod (inverse mod)
     modSwitcher = Switcher();
     zeroSwitcher = Switcher();
@@ -148,14 +148,15 @@ template ProcessChunk(CHUNK_SIZE, MAX_CHUNK_SIZE){
     getMod = Bits2Num(CHUNK_SIZE);
     getDiv = Bits2Num(MAX_CHUNK_SIZE - CHUNK_SIZE + 1);
     
-    // in if in > 0 else - in    
-    num2Bits.in <== in * (- 2 * sign + 1); 
-    for (var j = 0; j < CHUNK_SIZE; j++){
+    // in if in > 0 else - in
+    num2Bits.in <== in * (- 2 * sign + 1);
+    for (var j = 0; j < CHUNK_SIZE; j++)
+    {
         getMod.in[j] <== num2Bits.out[j];
     }
     
     isZero.in <== getMod.out;
-
+    
     modSwitcher.in[0] <== getMod.out;
     modSwitcher.in[1] <== 2 ** CHUNK_SIZE - getMod.out;
     modSwitcher.bool <== sign;
@@ -175,9 +176,9 @@ template ProcessChunk(CHUNK_SIZE, MAX_CHUNK_SIZE){
     for (var j = 0; j < MAX_CHUNK_SIZE - CHUNK_SIZE + 1; j++){
         getDiv.in[j] <== num2Bits.out[j + CHUNK_SIZE];
     }
-
+    
     // Add 1 for negative div with non-zero modulus
-    overflow <== getDiv.out + sign * (1 - isZero.out); 
+    overflow <== getDiv.out + sign * (1 - isZero.out);
     
 }
 
