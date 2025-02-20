@@ -235,7 +235,7 @@ template EllipticCurvePrecomputePipinger(CHUNK_SIZE, CHUNK_NUMBER, A, B, P, WIND
 // We check is point is lies both on tangent and curve to assume that point is result of doubling
 template EllipticCurveDouble(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     signal input in[2][CHUNK_NUMBER];
-        signal output out[2][CHUNK_NUMBER];
+    signal output out[2][CHUNK_NUMBER];
 
     var long_3[CHUNK_NUMBER];
     long_3[0] = 3;
@@ -300,6 +300,7 @@ template EllipticCurveAdd(CHUNK_SIZE, CHUNK_NUMBER, A, B, P){
     
     // same as previous, this checks should be enought, no need in range checks
 }
+
 
 // Optimised scalar point multiplication, use it if u can`t add precompute table
 // Algo:
