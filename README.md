@@ -1,3 +1,5 @@
+Moved to https://github.com/dl-solarity/circom-lib
+
 # circom-dl
 
 circom-dl is a a library implementing zk cryptographic primitives.
